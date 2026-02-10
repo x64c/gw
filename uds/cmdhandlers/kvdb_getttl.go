@@ -1,0 +1,55 @@
+package cmdhandlers
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/x64c/gw/db/kvdb"
+	"github.com/x64c/gw/framework"
+)
+
+type KvdbGetTTL struct {
+	AppProvider framework.AppProviderFunc
+}
+
+func (h *KvdbGetTTL) GroupName() string {
+	return "kvdb"
+}
+
+func (h *KvdbGetTTL) Command() string {
+	return "kvdb-get-ttl"
+}
+
+func (h *KvdbGetTTL) Desc() string {
+	return "Print TTL of the given key in KV database"
+}
+
+func (h *KvdbGetTTL) Usage() string {
+	return h.Command() + " key"
+}
+
+func (h *KvdbGetTTL) HandleCommand(args []string, w io.Writer) error {
+	argLen := len(args)
+	if argLen != 1 {
+		return fmt.Errorf("usage: %s", h.Usage())
+	}
+	key := args[0]
+	appCore := h.AppProvider().AppCore()
+	kvDBClient := appCore.KVDBClient
+	ctx := appCore.RootCtx
+	ttl, state, err := kvDBClient.TTL(ctx, key)
+	if err != nil {
+		return err
+	}
+	switch state {
+	case kvdb.TTLKeyNotFound:
+		return fmt.Errorf("key not found")
+	case kvdb.TTLPersistent:
+		_, _ = fmt.Fprintln(w, "persistent")
+	case kvdb.TTLExpiring:
+		_, _ = fmt.Fprintf(w, "%v (%ds)\n", ttl, int64(ttl.Seconds()))
+	default:
+		return fmt.Errorf("invalid TTLState")
+	}
+	return nil
+}

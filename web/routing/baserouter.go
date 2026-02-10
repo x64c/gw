@@ -1,0 +1,43 @@
+package routing
+
+import (
+	"net/http"
+
+	"github.com/x64c/gw/web"
+)
+
+type BaseRouter struct {
+	*http.ServeMux // Embedded
+}
+
+// Ensure BaseRouter[any] implements Router
+var _ Router = (*BaseRouter)(nil)
+
+// ServeHTTP = ServeMux.ServeHTTP [Promoted]
+// -> This will call the route-matched handler's ServeHTTP
+
+// Handle registers a route pattern
+func (r *BaseRouter) Handle(pattern string, handler http.Handler, handlerWrappers ...web.HandlerWrapper) {
+	wrappedHandler := handler
+	for i := len(handlerWrappers) - 1; i >= 0; i-- {
+		wrappedHandler = handlerWrappers[i].Wrap(wrappedHandler)
+	}
+	r.ServeMux.Handle(pattern, wrappedHandler)
+}
+
+func (r *BaseRouter) HandleFunc(pattern string, handleFunc func(http.ResponseWriter, *http.Request), handlerWrappers ...web.HandlerWrapper) {
+	r.Handle(pattern, http.HandlerFunc(handleFunc), handlerWrappers...)
+}
+
+// Group lets you register routes under a common Prefix + middleware.
+func (r *BaseRouter) Group(prefix string, batch func(*RouteGroup), handlerWrappers ...web.HandlerWrapper) *RouteGroup {
+	g := &RouteGroup{
+		Router:          r,
+		Prefix:          prefix,
+		HandlerWrappers: handlerWrappers,
+	}
+
+	batch(g)
+
+	return g // to do more with this routegroup if any
+}
