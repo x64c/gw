@@ -76,7 +76,8 @@ func (s *HTMLTemplateStore) LoadFileTemplates(tplRoot string) error {
 				return fmt.Errorf("duplicate template key detected: %s (file=%s)", key, path)
 			}
 			// Parse
-			t, err := template.New(key).Parse(string(fileBytes))
+			t := template.New(key)
+			t, err = t.Parse(string(fileBytes))
 			if err != nil {
 				return fmt.Errorf("parse error in %s: %w", path, err)
 			}
