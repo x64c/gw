@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 )
 
-const FileSuffix = ".gohtml"
+const FileSuffix = ".ghtml"
 
 type HTMLTemplateStore struct {
 	FileTemplates map[string]*template.Template // each file → html/template.New(key).Parse(string(fileBytes))
