@@ -1,3 +1,9 @@
+# Loading
+Compile-time embed.
+`//go:embed **/*` embeds all SQL files into the binary via `embed.FS`
+
+No need to `cp` any `sql` files to a directory that the binary uses.
+
 # Placeholders
 
 ## 1. Static Placeholders
