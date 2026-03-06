@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/x64c/gw/model"
+	"github.com/x64c/gw/nullable"
 	"github.com/x64c/gw/orm/coll"
 )
 
@@ -131,4 +133,31 @@ func QueryCollectionByColumn[
 		}
 	}()
 	return ScanRowsToCollection[M, MP, ID](rows)
+}
+
+// LoadNullableBelongsTo - Convenience wrapper around LoadOptionalBelongsTo for nullable FK fields
+// Uses nullable.Nullable[PID] interface to extract the FK pointer via Ptr()
+// Returns the Parent Collection
+func LoadNullableBelongsTo[
+	CP model.Identifiable[CID],
+	CID comparable,
+	P any, // Model struct
+	PP ScannableIdentifiable[P, PID],
+	PID comparable,
+](
+	ctx context.Context,
+	dbClient Client,
+	children *coll.Collection[CP, CID],
+	sqlSelectBase string,
+	nullableFKField func(c CP) nullable.Nullable[PID],
+	relationFieldPtr func(c CP) *PP,
+) (
+	*coll.Collection[PP, PID],
+	error,
+) {
+	return LoadOptionalBelongsTo[CP, CID, P, PP, PID](
+		ctx, dbClient, children, sqlSelectBase,
+		func(c CP) *PID { return nullableFKField(c).Ptr() },
+		relationFieldPtr,
+	)
 }

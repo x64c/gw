@@ -42,6 +42,49 @@ func LoadBelongsTo[
 	return parents, nil
 }
 
+// LoadOptionalBelongsTo - Load Parents on Children from SQL DB and Link Child-BelongsTo-Parent Relation
+// Optional Version: children with null FKs are skipped (their relation field stays nil)
+// When accessing the parent model, nil check is required
+// Returns the Parent Collection
+func LoadOptionalBelongsTo[
+	CP model.Identifiable[CID],
+	CID comparable,
+	P any, // Model struct
+	PP ScannableIdentifiable[P, PID],
+	PID comparable,
+](
+	ctx context.Context,
+	dbClient Client,
+	children *coll.Collection[CP, CID],
+	sqlSelectBase string,
+	foreignKeyFieldPtr func(c CP) *PID,
+	relationFieldPtr func(c CP) *PP,
+) (
+	*coll.Collection[PP, PID],
+	error,
+) {
+	fKeysAsAny := coll.CollectUniqueToSliceWithSkip(children,
+		func(c CP) any {
+			ptr := foreignKeyFieldPtr(c)
+			if ptr == nil {
+				return nil
+			}
+			return *ptr
+		},
+		func(v any) bool { return v == nil },
+	)
+	if len(fKeysAsAny) == 0 {
+		return coll.NewEmptyOrderedCollection[PP, PID](), nil
+	}
+	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", dbClient.Placeholders(len(fKeysAsAny)))
+	parents, err := RawQueryCollection[P, PP, PID](ctx, dbClient, sqlStmt, fKeysAsAny...)
+	if err != nil {
+		return nil, err
+	}
+	coll.LinkOptionalBelongsTo[CP, CID, PP, PID](children, parents, foreignKeyFieldPtr, relationFieldPtr)
+	return parents, nil
+}
+
 func LoadHasMany[
 	PP model.Identifiable[PID],
 	PID comparable,

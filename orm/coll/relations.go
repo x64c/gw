@@ -6,10 +6,10 @@ import (
 	"github.com/x64c/gw/model"
 )
 
-// LinkOptionalBelongsTo connects ChildCollection-ParentCollection where Child-BelongsTo-Parent
+// LinkOptionalBelongsTo (Optional Version) connects ChildCollection-ParentCollection where Child-BelongsTo-Parent
 // ForeignKeyField is on the Child
+// RelationOwner: Child
 // RelationField is on the Child
-// Optional Version
 func LinkOptionalBelongsTo[
 	CP model.Identifiable[CID],
 	CID comparable,
@@ -33,14 +33,15 @@ func LinkOptionalBelongsTo[
 	}
 }
 
-// LinkBelongsTo - Strict Version
+// LinkBelongsTo (Strict Version) connects ChildCollection-ParentCollection where Child-BelongsTo-Parent
 // ForeignKeyField is on the Child
+// RelationOwner: Child
 // RelationField is on the Child
 func LinkBelongsTo[
-	CP model.Identifiable[CID],
-	CID comparable,
-	PP model.Identifiable[PID],
-	PID comparable,
+	CP model.Identifiable[CID], // Child Pointer Type
+	CID comparable, // Child ID Type
+	PP model.Identifiable[PID], // Parent Pointer Type
+	PID comparable, // Parent ID Type
 ](
 	children *Collection[CP, CID],
 	parents *Collection[PP, PID],
@@ -61,9 +62,10 @@ func LinkBelongsTo[
 	return nil
 }
 
-// LinkHasMany connects ParentCollection-ChildCollection where a Parent-HasMany-Children
+// LinkHasMany connects ParentCollection-ChildCollection where Parent-HasMany-Children
 // ForeignKeyField is on the Child
-// RelationField (a Slice) is on the Parent
+// RelationOwner: Parent
+// RelationField (Collection) is on the Parent
 func LinkHasMany[
 	PP model.Identifiable[PID],
 	PID comparable,

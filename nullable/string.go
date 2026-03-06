@@ -44,3 +44,10 @@ func (n *String) ForceValue() string {
 func (n *String) IsNil() bool {
 	return !n.Valid
 }
+
+func (n *String) Ptr() *string {
+	if !n.Valid {
+		return nil
+	}
+	return &n.String
+}

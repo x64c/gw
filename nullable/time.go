@@ -49,3 +49,10 @@ func (n *Time) ForceValue() time.Time {
 func (n *Time) IsNil() bool {
 	return !n.Valid
 }
+
+func (n *Time) Ptr() *time.Time {
+	if !n.Valid {
+		return nil
+	}
+	return &n.Time
+}

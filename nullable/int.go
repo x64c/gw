@@ -44,3 +44,10 @@ func (n *Int) ForceValue() int64 {
 func (n *Int) IsNil() bool {
 	return !n.Valid
 }
+
+func (n *Int) Ptr() *int64 {
+	if !n.Valid {
+		return nil
+	}
+	return &n.Int64
+}
