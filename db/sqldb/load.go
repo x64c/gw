@@ -1,14 +1,11 @@
-//go:build debug && verbose
-
 package sqldb
 
 import (
 	"context"
 	"fmt"
-	"log"
-	"strings"
 
 	"github.com/x64c/gw/model"
+	"github.com/x64c/gw/nullable"
 	"github.com/x64c/gw/orm/coll"
 )
 
@@ -27,15 +24,12 @@ func LoadBelongsTo[
 	sqlSelectBase string,
 	foreignKey func(c CP) PID,
 	relationFieldPtr func(c CP) *PP,
-) (*coll.Collection[PP, PID], error) {
+) (
+	*coll.Collection[PP, PID],
+	error,
+) {
 	fKeysAsAny := coll.CollectUniqueToSlice(children, func(c CP) any { return foreignKey(c) })
-	parts := make([]string, len(fKeysAsAny))
-	for i, v := range fKeysAsAny {
-		parts[i] = fmt.Sprint(v) // fmt.Sprint converts any value to string e.g. 3->"3", true->"true", nil->"<nil>"
-	}
-	log.Printf("[DEBUG] LoadBelongsTo() FKs: %s", strings.Join(parts, ","))
 	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", dbClient.Placeholders(len(fKeysAsAny)))
-	log.Printf("[DEBUG] LoadBelongsTo() sqlStmt %s", sqlStmt)
 	parents, err := RawQueryCollection[P, PP, PID](ctx, dbClient, sqlStmt, fKeysAsAny...)
 	if err != nil {
 		return nil, err
@@ -64,7 +58,10 @@ func LoadOptionalBelongsTo[
 	sqlSelectBase string,
 	foreignKeyFieldPtr func(c CP) *PID,
 	relationFieldPtr func(c CP) *PP,
-) (*coll.Collection[PP, PID], error) {
+) (
+	*coll.Collection[PP, PID],
+	error,
+) {
 	fKeysAsAny := coll.CollectUniqueToSliceWithSkip(children,
 		func(c CP) any {
 			ptr := foreignKeyFieldPtr(c)
@@ -78,19 +75,40 @@ func LoadOptionalBelongsTo[
 	if len(fKeysAsAny) == 0 {
 		return coll.NewEmptyOrderedCollection[PP, PID](), nil
 	}
-	parts := make([]string, len(fKeysAsAny))
-	for i, v := range fKeysAsAny {
-		parts[i] = fmt.Sprint(v)
-	}
-	log.Printf("[DEBUG] LoadOptionalBelongsTo() FKs: %s", strings.Join(parts, ","))
 	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", dbClient.Placeholders(len(fKeysAsAny)))
-	log.Printf("[DEBUG] LoadOptionalBelongsTo() sqlStmt %s", sqlStmt)
 	parents, err := RawQueryCollection[P, PP, PID](ctx, dbClient, sqlStmt, fKeysAsAny...)
 	if err != nil {
 		return nil, err
 	}
 	coll.LinkOptionalBelongsTo[CP, CID, PP, PID](children, parents, foreignKeyFieldPtr, relationFieldPtr)
 	return parents, nil
+}
+
+// LoadNullableBelongsTo - Convenience wrapper around LoadOptionalBelongsTo for nullable FK fields
+// Uses nullable.Nullable[PID] interface to extract the FK pointer via Ptr()
+// Returns the Parent Collection
+func LoadNullableBelongsTo[
+	CP model.Identifiable[CID],
+	CID comparable,
+	P any, // Model struct
+	PP ScannableIdentifiable[P, PID],
+	PID comparable,
+](
+	ctx context.Context,
+	dbClient Client,
+	children *coll.Collection[CP, CID],
+	sqlSelectBase string,
+	nullableFKField func(c CP) nullable.Nullable[PID],
+	relationFieldPtr func(c CP) *PP,
+) (
+	*coll.Collection[PP, PID],
+	error,
+) {
+	return LoadOptionalBelongsTo[CP, CID, P, PP, PID](
+		ctx, dbClient, children, sqlSelectBase,
+		func(c CP) *PID { return nullableFKField(c).Ptr() },
+		relationFieldPtr,
+	)
 }
 
 func LoadHasMany[
@@ -107,11 +125,47 @@ func LoadHasMany[
 	foreignKeyColumn Column, // on the child
 	foreignKey func(CP) PID, // on the child
 	relationFieldPtr func(PP) **coll.Collection[CP, CID], // on the parent
+	orderBys ...OrderBy,
 ) (*coll.Collection[CP, CID], error) {
-	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(),
-		dbClient.Placeholders(parents.Len(), 2))
+	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), dbClient.Placeholders(parents.Len()))
+	sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 	parentIDsAsAny := parents.IDsAsAny()
 	children, err := RawQueryCollection[C, CP, CID](ctx, dbClient, sqlStmt, parentIDsAsAny...)
+	if err != nil {
+		return nil, err
+	}
+	coll.LinkHasMany[PP, PID, CP, CID](
+		parents,
+		children,
+		foreignKey,
+		relationFieldPtr,
+	)
+	return children, nil
+}
+
+// LoadHasManyQueryOpts - Same as LoadHasMany but with QueryOpts for WHERE conditions and ORDER BY.
+func LoadHasManyQueryOpts[
+	PP model.Identifiable[PID],
+	PID comparable,
+	C any, // Model struct
+	CP ScannableIdentifiable[C, CID],
+	CID comparable,
+](
+	ctx context.Context,
+	dbClient Client,
+	parents *coll.Collection[PP, PID],
+	sqlSelectBase string,
+	foreignKeyColumn Column, // on the child
+	foreignKey func(CP) PID, // on the child
+	relationFieldPtr func(PP) **coll.Collection[CP, CID], // on the parent
+	queryOpts QueryOpts,
+) (*coll.Collection[CP, CID], error) {
+	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), dbClient.Placeholders(parents.Len()))
+	args := parents.IDsAsAny()
+	whereExtra, whereArgs := WhereEqClause(queryOpts.Wheres, dbClient, len(args)+1)
+	sqlStmt := sqlSelectBase + whereClause + whereExtra + OrderByClause(queryOpts.OrderBys)
+	args = append(args, whereArgs...)
+	children, err := RawQueryCollection[C, CP, CID](ctx, dbClient, sqlStmt, args...)
 	if err != nil {
 		return nil, err
 	}
