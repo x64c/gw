@@ -162,9 +162,9 @@ func LoadHasManyQueryOpts[
 ) (*coll.Collection[CP, CID], error) {
 	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), dbClient.Placeholders(parents.Len()))
 	args := parents.IDsAsAny()
-	whereExtra, whereArgs := WhereEqClause(queryOpts.Wheres, dbClient, len(args)+1)
-	sqlStmt := sqlSelectBase + whereClause + whereExtra + OrderByClause(queryOpts.OrderBys)
-	args = append(args, whereArgs...)
+	whereOpExtra, whereOpArgs := CompoundWhereOpCond(queryOpts.WhereOpConds, dbClient, len(args)+1)
+	sqlStmt := sqlSelectBase + whereClause + whereOpExtra + CompoundWhereNotNullCond(queryOpts.WhereNotNulls) + CompoundWhereNullCond(queryOpts.WhereNulls) + OrderByClause(queryOpts.OrderBys)
+	args = append(args, whereOpArgs...)
 	children, err := RawQueryCollection[C, CP, CID](ctx, dbClient, sqlStmt, args...)
 	if err != nil {
 		return nil, err
