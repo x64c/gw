@@ -1,7 +1,7 @@
-// Package greg provides a generic group registry.
+// Package tg provides a typed group registry.
 // It allows registering and retrieving typed items by string ID,
 // grouped under a common interface.
-package greg
+package tg
 
 // RegGrp is the non-generic interface that all typed groups satisfy.
 // This allows storing different TypedGroup[T] instances in a single map.
