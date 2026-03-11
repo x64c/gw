@@ -10,8 +10,9 @@ import (
 	"github.com/x64c/gw/clients"
 	"github.com/x64c/gw/db/kvdb"
 	"github.com/x64c/gw/db/sqldb"
+	"github.com/x64c/gw/greg"
 	"github.com/x64c/gw/schedjobs"
-	"github.com/x64c/gw/storages"
+	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/svc"
 	"github.com/x64c/gw/throttle"
 	"github.com/x64c/gw/tpl"
@@ -35,7 +36,7 @@ type Core struct {
 	VolatileKV               *sync.Map                                        `json:"-"`          // map[string]string
 	SessionLocks             *sync.Map                                        `json:"-"`          // map[string]*sync.Mutex for AccessTokenSessions and CookieSessions
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
-	StorageConf              storages.Conf                                    `json:"-"`          // LoadStorageConf
+	JwksServiceConf          security.JwksServiceConf                          `json:"-"`          // LoadJwksServiceConf
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
 	KVDBConf                 kvdb.Conf                                        `json:"-"`          // loadKVDBConf
 	KVDBClient               kvdb.Client                                      `json:"-"`          // prepareKVDBClient
@@ -45,6 +46,7 @@ type Core struct {
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions
 	HTMLTemplateStore        *tpl.HTMLTemplateStore                           `json:"-"`          // PrepareHTMLTemplateStore
 	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
+	TypedGroupRegistry            map[string]greg.RegGrp                            `json:"-"`          // Group Registry for typed groups
 
 	services []svc.Service // Services to Manage
 	done     chan error

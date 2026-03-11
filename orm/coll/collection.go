@@ -229,3 +229,36 @@ func (c *Collection[MP, ID]) Filter(fn func(MP) bool) *Collection[MP, ID] {
 	}
 	return filtered
 }
+
+// First returns the first item from the collection if ordered.
+// If unordered, the returned item is non-deterministic.
+func (c *Collection[MP, ID]) First() (MP, bool) {
+	if c.order != nil && len(c.order) > 0 {
+		return c.itemsMap[c.order[0]], true
+	}
+	for _, mp := range c.itemsMap {
+		return mp, true
+	}
+	var zero MP
+	return zero, false
+}
+
+// FirstBy returns the first item matching the predicate.
+// If ordered, respects order. If unordered, non-deterministic.
+func (c *Collection[MP, ID]) FirstBy(fn func(MP) bool) (MP, bool) {
+	if c.order != nil {
+		for _, id := range c.order {
+			if mp, ok := c.itemsMap[id]; ok && fn(mp) {
+				return mp, true
+			}
+		}
+	} else {
+		for _, mp := range c.itemsMap {
+			if fn(mp) {
+				return mp, true
+			}
+		}
+	}
+	var zero MP
+	return zero, false
+}

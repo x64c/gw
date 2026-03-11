@@ -44,11 +44,11 @@ func (h *JwksRotate) HandleCommand(_ []string, w io.Writer) error {
 	}
 	appCore := h.AppProvider().AppCore()
 	// Store PEM keys
-	privateKeyStorePath := appCore.StorageConf.KeyStoreConf.PrivateKeyDir + "/" + keyId + "_private.pem"
+	privateKeyStorePath := appCore.JwksServiceConf.PrivateKeyDir + "/" + keyId + "_private.pem"
 	if err = security.SavePrivatePEMKeyLocal(privateKeyStorePath, privateKey); err != nil {
 		return fmt.Errorf("failed to save private key. %v", err)
 	}
-	publicKeyStorePath := appCore.StorageConf.KeyStoreConf.PublicKeyDir + "/" + keyId + "_public.pem"
+	publicKeyStorePath := appCore.JwksServiceConf.PublicKeyDir + "/" + keyId + "_public.pem"
 	if err = security.SavePublicPEMKeyLocal(publicKeyStorePath, publicKey); err != nil {
 		return fmt.Errorf("failed to save public key. %v", err)
 	}
@@ -57,7 +57,7 @@ func (h *JwksRotate) HandleCommand(_ []string, w io.Writer) error {
 		return fmt.Errorf("failed to save current key. %v", err)
 	}
 	// Load Pem Files into JWKS
-	jwks, err := security.LoadPublicPEMKeysAsJWKS(appCore.StorageConf.KeyStoreConf.PublicKeyDir) // *security.Jwks
+	jwks, err := security.LoadPublicPEMKeysAsJWKS(appCore.JwksServiceConf.PublicKeyDir) // *security.Jwks
 	if err != nil {
 		return fmt.Errorf("failed to load public keys. %v", err)
 	}

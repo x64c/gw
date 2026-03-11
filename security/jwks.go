@@ -133,3 +133,8 @@ func LoadPublicPEMKeysAsJWKS(dirPath string) (*JWKS, error) {
 	}
 	return &JWKS{Keys: keys}, nil
 }
+
+type JwksServiceConf struct {
+	PrivateKeyDir string `json:"private_key_dir"`
+	PublicKeyDir  string `json:"public_key_dir"`
+}

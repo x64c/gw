@@ -42,26 +42,26 @@ func (h *JwksDeleteOldRsakeys) HandleCommand(_ []string, w io.Writer) error {
 	}
 
 	// List files in private key directory
-	files, err := os.ReadDir(appCore.StorageConf.KeyStoreConf.PrivateKeyDir)
+	files, err := os.ReadDir(appCore.JwksServiceConf.PrivateKeyDir)
 	if err != nil {
 		return fmt.Errorf("failed to read private key dir: %v\n", err)
 	}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), "_private.pem") && !strings.Contains(f.Name(), kid) {
 			// delete old private PEM files
-			path := filepath.Join(appCore.StorageConf.KeyStoreConf.PrivateKeyDir, f.Name())
+			path := filepath.Join(appCore.JwksServiceConf.PrivateKeyDir, f.Name())
 			_ = os.Remove(path)
 		}
 	}
 	// List files in public key directory
-	files, err = os.ReadDir(appCore.StorageConf.KeyStoreConf.PublicKeyDir)
+	files, err = os.ReadDir(appCore.JwksServiceConf.PublicKeyDir)
 	if err != nil {
 		return fmt.Errorf("failed to read public key dir: %v\n", err)
 	}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), "_public.pem") && !strings.Contains(f.Name(), kid) {
 			// delete old public PEM files
-			path := filepath.Join(appCore.StorageConf.KeyStoreConf.PublicKeyDir, f.Name())
+			path := filepath.Join(appCore.JwksServiceConf.PublicKeyDir, f.Name())
 			_ = os.Remove(path)
 		}
 	}

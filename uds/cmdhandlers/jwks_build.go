@@ -33,7 +33,7 @@ func (h *JwksBuild) Usage() string {
 func (h *JwksBuild) HandleCommand(_ []string, w io.Writer) error {
 	appCore := h.AppProvider().AppCore()
 	// Load Pem Files into JWKS
-	jwks, err := security.LoadPublicPEMKeysAsJWKS(appCore.StorageConf.KeyStoreConf.PublicKeyDir) // *security.Jwks
+	jwks, err := security.LoadPublicPEMKeysAsJWKS(appCore.JwksServiceConf.PublicKeyDir) // *security.Jwks
 	if err != nil {
 		return fmt.Errorf("failed to load public keys. %v", err)
 	}
