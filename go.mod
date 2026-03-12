@@ -6,7 +6,6 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/phpdave11/gofpdf v1.4.3
 	github.com/redis/go-redis/v9 v9.18.0
 	golang.org/x/crypto v0.49.0
 )
@@ -18,8 +17,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/phpdave11/gofpdi v1.0.15 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
