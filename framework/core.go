@@ -10,6 +10,7 @@ import (
 	"github.com/x64c/gw/clients"
 	"github.com/x64c/gw/db/kvdb"
 	"github.com/x64c/gw/db/sqldb"
+	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/schedjobs"
 	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/storages"
@@ -48,6 +49,7 @@ type Core struct {
 	HTMLTemplateStore        *tpl.HTMLTemplateStore                           `json:"-"`          // PrepareHTMLTemplateStore
 	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
 	TypedGroupRegistry       map[string]tg.RegGrp                             `json:"-"`          // Group Registry for typed groups
+	KVDBClients              map[string]kvdbs.Client                          `json:"-"`          // PrepareKVDBClients
 	LocalStorages            map[string]*storages.LocalStorage                `json:"-"`          // PrepareStorages
 	StorageClients           map[string]storages.Client                        `json:"-"`          // PrepareStorageClients
 
