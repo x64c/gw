@@ -3,7 +3,7 @@ package clients
 import "context"
 
 type ClientAppConf struct {
-	ID                   string    `json:"-"` // filled with a key from .clients.json
+	ID                   string    `json:"-"` // filled with a key from .client-apps.json
 	Name                 string    `json:"name"`
 	ExpireAccess         int       `json:"expire_access"` // No Sliding, Just Expire, then, Reissue by Refresh Token
 	ExpireRefreshSliding int       `json:"expire_refresh_sliding"`

@@ -38,7 +38,6 @@ type Core struct {
 	SessionLocks             *sync.Map                                        `json:"-"`          // map[string]*sync.Mutex for AccessTokenSessions and CookieSessions
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
 	JwksServiceConf          security.JwksServiceConf                          `json:"-"`          // LoadJwksServiceConf
-	Storages                 map[string]storages.Storage                       `json:"-"`          // PrepareStorages
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
 	KVDBConf                 kvdb.Conf                                        `json:"-"`          // loadKVDBConf
 	KVDBClient               kvdb.Client                                      `json:"-"`          // prepareKVDBClient
@@ -48,9 +47,12 @@ type Core struct {
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions
 	HTMLTemplateStore        *tpl.HTMLTemplateStore                           `json:"-"`          // PrepareHTMLTemplateStore
 	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
-	TypedGroupRegistry            map[string]tg.RegGrp                            `json:"-"`          // Group Registry for typed groups
+	TypedGroupRegistry       map[string]tg.RegGrp                             `json:"-"`          // Group Registry for typed groups
+	LocalStorages            map[string]*storages.LocalStorage                `json:"-"`          // PrepareStorages
+	StorageClients           map[string]storages.Client                        `json:"-"`          // PrepareStorageClients
 
-	services []svc.Service // Services to Manage
+	// internal
+	services []svc.Service
 	done     chan error
 }
 

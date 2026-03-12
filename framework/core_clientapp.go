@@ -24,7 +24,7 @@ func (c *Core) PrepareClientApps() error {
 }
 
 func (c *Core) newClientAppsConfMapFromFile() (map[string]clients.ClientAppConf, error) {
-	confFilePath := filepath.Join(c.AppRoot, "config", ".clients.json")
+	confFilePath := filepath.Join(c.AppRoot, "config", ".client-apps.json")
 	confBytes, err := os.ReadFile(confFilePath) // ([]byte, error)
 	if err != nil {
 		return nil, err
