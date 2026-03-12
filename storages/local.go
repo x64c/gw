@@ -44,7 +44,7 @@ func (s *LocalStorage) Put(_ context.Context, path string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, r)
 	return err
 }
@@ -66,7 +66,7 @@ func (s *LocalStorage) Copy(_ context.Context, src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 	dstFull := s.path(dst)
 	if err = os.MkdirAll(filepath.Dir(dstFull), 0755); err != nil {
 		return err
@@ -75,7 +75,7 @@ func (s *LocalStorage) Copy(_ context.Context, src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 	_, err = io.Copy(dstFile, srcFile)
 	return err
 }
