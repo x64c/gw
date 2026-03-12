@@ -2,7 +2,6 @@ package storages
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	"io"
 )
 
@@ -14,9 +13,4 @@ type Storage interface {
 	Size(ctx context.Context, path string) (int64, error)
 	Copy(ctx context.Context, src string, dst string) error
 	Move(ctx context.Context, src string, dst string) error
-}
-
-type Client interface {
-	CreateStorage(name string, conf jsontext.Value) error
-	Storage(name string) (Storage, bool)
 }
