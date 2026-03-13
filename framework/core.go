@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 
 	"github.com/x64c/gw/clients"
-	"github.com/x64c/gw/db/sqldb"
 	"github.com/x64c/gw/kvdbs"
+	"github.com/x64c/gw/sqldbs"
 	"github.com/x64c/gw/schedjobs"
 	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/storages"
@@ -39,8 +39,7 @@ type Core struct {
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
 	JwksServiceConf          security.JwksServiceConf                          `json:"-"`          // LoadJwksServiceConf
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
-	SQLDBConfs               map[string]*sqldb.Conf                           `json:"-"`          // loadSQLDBConfs
-	SQLDBClients             map[string]sqldb.Client                          `json:"-"`          // prepareSQLDBClients
+	SQLDBClients             map[string]sqldbs.Client                         `json:"-"`          // PrepareSQLDBClients
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions
 	HTMLTemplateStore        *tpl.HTMLTemplateStore                           `json:"-"`          // PrepareHTMLTemplateStore

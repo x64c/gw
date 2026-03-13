@@ -24,7 +24,7 @@ func (h *SqldbPrintRawStore) Desc() string {
 }
 
 func (h *SqldbPrintRawStore) Usage() string {
-	return h.Command() + " dbname [storekey]"
+	return h.Command() + " clientname [storekey]"
 }
 
 func (h *SqldbPrintRawStore) HandleCommand(args []string, w io.Writer) error {

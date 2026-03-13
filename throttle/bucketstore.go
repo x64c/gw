@@ -17,7 +17,7 @@ type BucketStore struct {
 	done             chan error         // Shutdown Error Channel
 	cleanupCycle     time.Duration
 	cleanupOlderThan time.Duration
-	groups           map[string]*BucketGroup
+	groups           map[string]*BucketGroup // groupID -> *BucketGroup
 }
 
 func (s *BucketStore) Name() string {
@@ -111,7 +111,7 @@ func (s *BucketStore) SetBucketGroup(id string, conf *BucketConf) {
 func (s *BucketStore) Allow(groupID string, bucketID string, now time.Time) bool {
 	g, ok := s.GetBucketGroup(groupID)
 	if !ok {
-		return false // Invalid groupID always Blocked
+		return false // Invalid groupID -> always Blocked
 	}
 	b, ok := g.GetBucket(bucketID)
 	if ok {

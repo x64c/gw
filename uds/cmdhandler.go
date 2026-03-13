@@ -5,8 +5,8 @@ import (
 )
 
 type CommandHandler interface {
-	Command() string   // Unique Name
-	GroupName() string // for display grouping
+	Command() string // Unique Name
+	GroupName() string
 	Desc() string
 	Usage() string
 	HandleCommand(args []string, w io.Writer) error

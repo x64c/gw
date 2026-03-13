@@ -5,11 +5,11 @@ import "context"
 type ClientAppConf struct {
 	ID                   string    `json:"-"` // filled with a key from .client-apps.json
 	Name                 string    `json:"name"`
-	ExpireAccess         int       `json:"expire_access"` // No Sliding, Just Expire, then, Reissue by Refresh Token
+	ExpireAccess         int       `json:"expire_access"`
 	ExpireRefreshSliding int       `json:"expire_refresh_sliding"`
 	ExpireRefreshHardcap int       `json:"expire_refresh_hardcap"`
 	MaxSessionsPerUser   int64     `json:"max_sessions_per_user"` // Max # of Service Sessions (Concurrent Connections) per User per ClientApp. 0 = unlimited
-	ExtAuthSecret        string    `json:"ext_auth_secret"`       // External Auth Service Secret // ToDo: make this map[string]string for multiple IdP's
+	ExtAuthSecret        string    `json:"ext_auth_secret"`       // External Auth Service Secret
 	DebugOpts            DebugOpts `json:"debug_opts"`
 }
 

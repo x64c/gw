@@ -14,7 +14,7 @@ import (
 const FileSuffix = ".ghtml"
 
 type HTMLTemplateStore struct {
-	FileTemplates map[string]*template.Template // each file → html/template.New(key).Parse(string(fileBytes))
+	FileTemplates map[string]*template.Template // each file → one template
 	Derived       map[string]*template.Template // composed templates
 }
 
@@ -69,7 +69,7 @@ func (s *HTMLTemplateStore) LoadFileTemplates(tplRoot string) error {
 				return fmt.Errorf("file %s is not valid UTF-8", path)
 			}
 			// Template key = relative path to the tplRoot without extension
-			rel, _ := filepath.Rel(tplRoot, path) // walking dirs. no chance of errors
+			rel, _ := filepath.Rel(tplRoot, path)
 			key := strings.TrimSuffix(filepath.ToSlash(rel), FileSuffix)
 			// Duplicate
 			if _, exists := s.FileTemplates[key]; exists {

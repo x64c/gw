@@ -15,13 +15,11 @@ func (c *Core) ResourceCleanUp() {
 		}
 	}
 	for name, sqlDBClient := range c.SQLDBClients {
-		dbType := sqlDBClient.Conf().Type
-		log.Printf("[INFO][%s] Closing %q SQL DB client", dbType, name)
-		err := sqlDBClient.Close()
-		if err != nil {
-			log.Printf("[ERROR][%s] Failed to close %q SQL DB client", dbType, name)
+		log.Printf("[INFO] Closing SQL DB client %q", name)
+		if err := sqlDBClient.Close(); err != nil {
+			log.Printf("[ERROR] Failed to close SQL DB client %q: %v", name, err)
 		} else {
-			log.Printf("[INFO][%s] %q SQL DB client closed", dbType, name)
+			log.Printf("[INFO] SQL DB client %q closed", name)
 		}
 	}
 	//----
