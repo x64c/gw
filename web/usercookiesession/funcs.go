@@ -67,7 +67,7 @@ func TryRedirectIfIntendedURICookie(w http.ResponseWriter, r *http.Request, logi
 
 func SessionIDToUIDStrFromKVDB(ctx context.Context, sessionMgr *Manager, sessionID string) (string, error) {
 	key := sessionMgr.SessionIDToKVDBKey(sessionID)
-	uidStr, ok, err := sessionMgr.KVDBClient.Get(ctx, key)
+	uidStr, ok, err := sessionMgr.KVDB.Get(ctx, key)
 	if err != nil {
 		return "", err
 	}

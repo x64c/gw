@@ -5,10 +5,12 @@ import (
 	"io"
 
 	"github.com/x64c/gw/framework"
+	"github.com/x64c/gw/kvdbs"
 )
 
 type KvdbGetKeys struct {
 	AppProvider framework.AppProviderFunc
+	KVDB        kvdbs.DB
 }
 
 func (h *KvdbGetKeys) GroupName() string {
@@ -28,12 +30,10 @@ func (h *KvdbGetKeys) Usage() string {
 }
 
 func (h *KvdbGetKeys) HandleCommand(_ []string, w io.Writer) error {
-	appCore := h.AppProvider().AppCore()
-	kvDBClient := appCore.KVDBClient
-	ctx := appCore.RootCtx
+	ctx := h.AppProvider().AppCore().RootCtx
 	var cursor any = nil
 	for {
-		keys, nextCursor, err := kvDBClient.ScanKeys(ctx, cursor, 1000)
+		keys, nextCursor, err := h.KVDB.ScanKeys(ctx, cursor, 1000)
 		if err != nil {
 			return err
 		}

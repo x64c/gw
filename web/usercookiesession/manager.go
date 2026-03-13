@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/x64c/gw/db/kvdb"
+	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/security"
 )
 
@@ -16,7 +16,7 @@ type Manager struct {
 	Cipher       *security.XChaCha20Poly1305Cipher
 	AppName      string // for session key, etc.
 	SessionLocks *sync.Map
-	KVDBClient   kvdb.Client
+	KVDB         kvdbs.DB
 }
 
 func (m *Manager) SessionIDToKVDBKey(sessionID string) string {
@@ -24,7 +24,7 @@ func (m *Manager) SessionIDToKVDBKey(sessionID string) string {
 }
 
 func (m *Manager) SessionExistsInKVDB(ctx context.Context, sessionID string) (bool, error) {
-	return m.KVDBClient.Exists(ctx, m.SessionIDToKVDBKey(sessionID))
+	return m.KVDB.Exists(ctx, m.SessionIDToKVDBKey(sessionID))
 }
 
 func (m *Manager) VerifiySessionCookie(ctx context.Context, r *http.Request) bool {
@@ -51,7 +51,7 @@ func (m *Manager) StoreSessionInKVDB(ctx context.Context, uidStr string) (string
 	// Store session_id in KvDB with access_token and refresh_token
 	slidingExpiration := time.Duration(m.Conf.ExpireIn) * time.Second
 	key := m.SessionIDToKVDBKey(cookieSessionID)
-	if err = m.KVDBClient.Set(ctx, key, uidStr, slidingExpiration); err != nil {
+	if err = m.KVDB.Set(ctx, key, uidStr, slidingExpiration); err != nil {
 		return "", err
 	}
 
@@ -64,12 +64,12 @@ func (m *Manager) StoreSessionInKVDB(ctx context.Context, uidStr string) (string
 		mutex.Lock() // waits until this gets the lock if it's locked by another goroutine
 		defer mutex.Unlock()
 
-		if err = m.KVDBClient.Push(ctx, usrSessionListKey, cookieSessionID); err != nil {
+		if err = m.KVDB.Push(ctx, usrSessionListKey, cookieSessionID); err != nil {
 			return "", err
 		}
 
 		defer func() {
-			_, _ = m.KVDBClient.Expire(
+			_, _ = m.KVDB.Expire(
 				ctx,
 				usrSessionListKey,
 				time.Duration(m.Conf.ExpireIn)*time.Second,
@@ -132,31 +132,31 @@ func (m *Manager) StoreExternalTokenPairInKVDB(ctx context.Context, sessionID st
 
 	// If first token pair, set expiration on the containers
 	shouldSetExp := false
-	found, err := m.KVDBClient.Exists(ctx, accessTokenKey)
+	found, err := m.KVDB.Exists(ctx, accessTokenKey)
 	if err != nil || !found {
 		shouldSetExp = true
 	}
 
-	err = m.KVDBClient.SetField(ctx, accessTokenKey, apiID, accessToken)
+	err = m.KVDB.SetField(ctx, accessTokenKey, apiID, accessToken)
 	if err != nil {
 		return err
 	}
-	err = m.KVDBClient.SetField(ctx, refreshTokenKey, apiID, refreshToken)
+	err = m.KVDB.SetField(ctx, refreshTokenKey, apiID, refreshToken)
 	if err != nil {
 		return err
 	}
 
 	if shouldSetExp {
 		slidingExpiration := time.Duration(m.Conf.ExpireIn) * time.Second
-		_, _ = m.KVDBClient.Expire(ctx, accessTokenKey, slidingExpiration)
-		_, _ = m.KVDBClient.Expire(ctx, refreshTokenKey, slidingExpiration)
+		_, _ = m.KVDB.Expire(ctx, accessTokenKey, slidingExpiration)
+		_, _ = m.KVDB.Expire(ctx, refreshTokenKey, slidingExpiration)
 	}
 
 	return nil
 }
 
 func (m *Manager) FetchExternalAccessToken(ctx context.Context, sessionID string, apiID string) (string, error) {
-	tkn, found, err := m.KVDBClient.GetField(ctx, m.SessionIDToKVDBKey(sessionID)+":access_tokens", apiID)
+	tkn, found, err := m.KVDB.GetField(ctx, m.SessionIDToKVDBKey(sessionID)+":access_tokens", apiID)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +167,7 @@ func (m *Manager) FetchExternalAccessToken(ctx context.Context, sessionID string
 }
 
 func (m *Manager) FetchExternalRefreshToken(ctx context.Context, sessionID string, apiID string) (string, error) {
-	tkn, found, err := m.KVDBClient.GetField(ctx, m.SessionIDToKVDBKey(sessionID)+":refresh_tokens", apiID)
+	tkn, found, err := m.KVDB.GetField(ctx, m.SessionIDToKVDBKey(sessionID)+":refresh_tokens", apiID)
 	if err != nil {
 		return "", err
 	}
@@ -200,7 +200,7 @@ func (m *Manager) buildKeysToDel(sessionsToDel []string) []string {
 }
 
 func (m *Manager) CleanUp(ctx context.Context, usrSessionListKey string) error {
-	sessionCnt, err := m.KVDBClient.Len(ctx, usrSessionListKey)
+	sessionCnt, err := m.KVDB.Len(ctx, usrSessionListKey)
 	if err != nil {
 		return err
 	}
@@ -209,13 +209,13 @@ func (m *Manager) CleanUp(ctx context.Context, usrSessionListKey string) error {
 	}
 
 	diff := sessionCnt - m.Conf.MaxCntPerUser
-	sessionsToDel, err := m.KVDBClient.Range(ctx, usrSessionListKey, 0, diff-1) // []string
+	sessionsToDel, err := m.KVDB.Range(ctx, usrSessionListKey, 0, diff-1) // []string
 	if err != nil {
 		return err
 	}
 	keysToDel := m.buildKeysToDel(sessionsToDel)
-	_, _ = m.KVDBClient.Delete(ctx, keysToDel...)
-	if err = m.KVDBClient.Trim(ctx, usrSessionListKey, diff, -1); err != nil {
+	_, _ = m.KVDB.Delete(ctx, keysToDel...)
+	if err = m.KVDB.Trim(ctx, usrSessionListKey, diff, -1); err != nil {
 		return err
 	}
 	return nil

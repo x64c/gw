@@ -5,10 +5,12 @@ import (
 	"io"
 
 	"github.com/x64c/gw/framework"
+	"github.com/x64c/gw/kvdbs"
 )
 
 type KvdbGet struct {
 	AppProvider framework.AppProviderFunc
+	KVDB        kvdbs.DB
 }
 
 func (h *KvdbGet) GroupName() string {
@@ -33,16 +35,14 @@ func (h *KvdbGet) HandleCommand(args []string, w io.Writer) error {
 		return fmt.Errorf("usage: %s", h.Usage())
 	}
 	key := args[0]
-	appCore := h.AppProvider().AppCore()
-	kvDBClient := appCore.KVDBClient
-	ctx := appCore.RootCtx
-	typeName, err := kvDBClient.Type(ctx, key)
+	ctx := h.AppProvider().AppCore().RootCtx
+	typeName, err := h.KVDB.Type(ctx, key)
 	if err != nil {
 		return err
 	}
 	switch typeName {
 	case "string":
-		strVal, found, err := kvDBClient.Get(ctx, key)
+		strVal, found, err := h.KVDB.Get(ctx, key)
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func (h *KvdbGet) HandleCommand(args []string, w io.Writer) error {
 		}
 		_, _ = fmt.Fprintln(w, strVal)
 	case "list":
-		vals, err := kvDBClient.Range(ctx, key, 0, -1)
+		vals, err := h.KVDB.Range(ctx, key, 0, -1)
 		if err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ func (h *KvdbGet) HandleCommand(args []string, w io.Writer) error {
 			_, _ = fmt.Fprintln(w, v)
 		}
 	case "hash":
-		valMap, err := kvDBClient.GetAllFields(ctx, key)
+		valMap, err := h.KVDB.GetAllFields(ctx, key)
 		if err != nil {
 			return err
 		}

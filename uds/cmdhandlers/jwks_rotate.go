@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 
 	"github.com/x64c/gw/framework"
+	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/security"
 )
 
 type JwksRotate struct {
 	AppProvider framework.AppProviderFunc
+	KVDB        kvdbs.DB
 }
 
 func (h *JwksRotate) GroupName() string {
@@ -53,7 +55,7 @@ func (h *JwksRotate) HandleCommand(_ []string, w io.Writer) error {
 		return fmt.Errorf("failed to save public key. %v", err)
 	}
 	// Update Current Key id
-	if err = appCore.KVDBClient.Set(appCore.RootCtx, appCore.AppName+":kid", keyId, 0); err != nil {
+	if err = h.KVDB.Set(appCore.RootCtx, appCore.AppName+":kid", keyId, 0); err != nil {
 		return fmt.Errorf("failed to save current key. %v", err)
 	}
 	// Load Pem Files into JWKS

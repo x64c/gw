@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/x64c/gw/clients"
-	"github.com/x64c/gw/db/kvdb"
 	"github.com/x64c/gw/db/sqldb"
 	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/schedjobs"
@@ -40,8 +39,6 @@ type Core struct {
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
 	JwksServiceConf          security.JwksServiceConf                          `json:"-"`          // LoadJwksServiceConf
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
-	KVDBConf                 kvdb.Conf                                        `json:"-"`          // loadKVDBConf
-	KVDBClient               kvdb.Client                                      `json:"-"`          // prepareKVDBClient
 	SQLDBConfs               map[string]*sqldb.Conf                           `json:"-"`          // loadSQLDBConfs
 	SQLDBClients             map[string]sqldb.Client                          `json:"-"`          // prepareSQLDBClients
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps

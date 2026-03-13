@@ -8,11 +8,6 @@ func (c *Core) ResourceCleanUp() {
 	log.Println("[INFO] App Resource Cleaning Up...")
 	// Clean up DB clients ----
 	// ToDo: factor out this
-	if c.KVDBClient != nil {
-		if err := c.KVDBClient.Close(); err != nil {
-			log.Println("[ERROR] Failed to close KV database client")
-		}
-	}
 	for name, kvdbClient := range c.KVDBClients {
 		log.Printf("[INFO] Closing KVDB client %q", name)
 		if err := kvdbClient.Close(); err != nil {

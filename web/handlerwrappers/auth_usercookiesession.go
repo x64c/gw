@@ -9,8 +9,8 @@ import (
 
 	"github.com/x64c/gw/authuser"
 	"github.com/x64c/gw/contxt"
-	"github.com/x64c/gw/db/kvdb"
 	"github.com/x64c/gw/framework"
+	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/web/responses"
 	"github.com/x64c/gw/web/usercookiesession"
 )
@@ -62,7 +62,7 @@ func (m *AuthUserCookieSession) authenticateCookieSession(
 	sessionID = string(sessionIDBytes)
 
 	key := cookieSessionMgr.SessionIDToKVDBKey(sessionID)
-	uidStr, found, err := cookieSessionMgr.KVDBClient.Get(ctx, key)
+	uidStr, found, err := cookieSessionMgr.KVDB.Get(ctx, key)
 	if err != nil {
 		responses.WriteSimpleErrorJSON(w, http.StatusInternalServerError, fmt.Sprintf("failed to check session. %v", err))
 		return nil, nil, "", "", false
@@ -110,17 +110,17 @@ func (m *AuthUserCookieSession) slidingExpHandler(inner http.Handler, cookieSess
 
 		// Sliding-specific
 		baseKey := cookieSessionMgr.SessionIDToKVDBKey(sessionID)
-		ttl, state, err := cookieSessionMgr.KVDBClient.TTL(ctx, baseKey)
-		if err == nil && state == kvdb.TTLExpiring && ttl < time.Duration(cookieSessionMgr.Conf.ExtendThreshold)*time.Second {
+		ttl, state, err := cookieSessionMgr.KVDB.TTL(ctx, baseKey)
+		if err == nil && state == kvdbs.TTLExpiring && ttl < time.Duration(cookieSessionMgr.Conf.ExtendThreshold)*time.Second {
 			slidingExpiration := time.Duration(cookieSessionMgr.Conf.ExpireIn) * time.Second
-			_, _ = cookieSessionMgr.KVDBClient.Expire(ctx, baseKey, slidingExpiration)
+			_, _ = cookieSessionMgr.KVDB.Expire(ctx, baseKey, slidingExpiration)
 			if cookieSessionMgr.Conf.WithExternalTokens {
-				_, _ = cookieSessionMgr.KVDBClient.Expire(ctx, baseKey+":access_tokens", slidingExpiration)
-				_, _ = cookieSessionMgr.KVDBClient.Expire(ctx, baseKey+":refresh_tokens", slidingExpiration)
+				_, _ = cookieSessionMgr.KVDB.Expire(ctx, baseKey+":access_tokens", slidingExpiration)
+				_, _ = cookieSessionMgr.KVDB.Expire(ctx, baseKey+":refresh_tokens", slidingExpiration)
 			}
 			if cookieSessionMgr.Conf.MaxCntPerUser > 0 {
 				usrSessionListKey := fmt.Sprintf("%s:ucookie_sessions:%s", cookieSessionMgr.AppName, uidStr)
-				_, _ = cookieSessionMgr.KVDBClient.Expire(ctx, usrSessionListKey, slidingExpiration)
+				_, _ = cookieSessionMgr.KVDB.Expire(ctx, usrSessionListKey, slidingExpiration)
 			}
 			encSessionID := sessionCookie.Value
 			cookieSessionMgr.RefreshSessionCookie(w, encSessionID)

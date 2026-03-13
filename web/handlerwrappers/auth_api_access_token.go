@@ -7,6 +7,7 @@ import (
 	"github.com/x64c/gw/authuser"
 	"github.com/x64c/gw/contxt"
 	"github.com/x64c/gw/framework"
+	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/reason"
 	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/web/responses"
@@ -14,6 +15,7 @@ import (
 
 type AuthAPIAccessToken struct {
 	AppProvider    framework.AppProviderFunc
+	KVDB           kvdbs.DB
 	UIDCtxInjector contxt.UnaryInjectorFunc[string] // [optional] ctx with app-specific UID from uidStr
 }
 
@@ -35,7 +37,7 @@ func (m *AuthAPIAccessToken) Wrap(inner http.Handler) http.Handler {
 			return
 		}
 		key := appCore.AppName + ":access:" + security.HashHexSHA256(accessToken)
-		uidStr, ok, err := appCore.KVDBClient.Get(ctx, key)
+		uidStr, ok, err := m.KVDB.Get(ctx, key)
 		if err != nil {
 			responses.WriteSimpleErrorJSON(w, http.StatusInternalServerError, fmt.Sprintf("failed to fetch access token info. %v", err))
 			return
