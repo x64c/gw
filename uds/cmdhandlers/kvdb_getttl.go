@@ -10,7 +10,6 @@ import (
 
 type KvdbGetTTL struct {
 	AppProvider framework.AppProviderFunc
-	KVDB        kvdbs.DB
 }
 
 func (h *KvdbGetTTL) GroupName() string {
@@ -35,8 +34,8 @@ func (h *KvdbGetTTL) HandleCommand(args []string, w io.Writer) error {
 		return fmt.Errorf("usage: %s", h.Usage())
 	}
 	key := args[0]
-	ctx := h.AppProvider().AppCore().RootCtx
-	ttl, state, err := h.KVDB.TTL(ctx, key)
+	appCore := h.AppProvider().AppCore()
+	ttl, state, err := appCore.MainKVDB.TTL(appCore.RootCtx, key)
 	if err != nil {
 		return err
 	}

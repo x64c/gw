@@ -8,12 +8,10 @@ import (
 	"strings"
 
 	"github.com/x64c/gw/framework"
-	"github.com/x64c/gw/kvdbs"
 )
 
 type JwksDeleteOldRsakeys struct {
 	AppProvider framework.AppProviderFunc
-	KVDB        kvdbs.DB
 }
 
 func (*JwksDeleteOldRsakeys) GroupName() string {
@@ -35,7 +33,7 @@ func (h *JwksDeleteOldRsakeys) Usage() string {
 func (h *JwksDeleteOldRsakeys) HandleCommand(_ []string, w io.Writer) error {
 	appCore := h.AppProvider().AppCore()
 	// Current Key id
-	kid, ok, err := h.KVDB.Get(appCore.RootCtx, appCore.AppName+":kid")
+	kid, ok, err := appCore.MainKVDB.Get(appCore.RootCtx, appCore.AppName+":kid")
 	if err != nil {
 		return fmt.Errorf("failed to get current kid: %v\n", err)
 	}

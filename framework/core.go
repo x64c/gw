@@ -47,6 +47,7 @@ type Core struct {
 	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
 	TypedGroupRegistry       map[string]tg.RegGrp                             `json:"-"`          // Group Registry for typed groups
 	KVDBClients              map[string]kvdbs.Client                          `json:"-"`          // PrepareKVDBClients
+	MainKVDB                 kvdbs.DB                                         `json:"-"`          // From KVDBClients or set directly
 	LocalStorages            map[string]*storages.LocalStorage                `json:"-"`          // PrepareStorages
 	StorageClients           map[string]storages.Client                        `json:"-"`          // PrepareStorageClients
 

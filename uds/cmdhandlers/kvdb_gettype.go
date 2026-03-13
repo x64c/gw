@@ -5,12 +5,10 @@ import (
 	"io"
 
 	"github.com/x64c/gw/framework"
-	"github.com/x64c/gw/kvdbs"
 )
 
 type KvdbGetType struct {
 	AppProvider framework.AppProviderFunc
-	KVDB        kvdbs.DB
 }
 
 func (h *KvdbGetType) GroupName() string {
@@ -35,15 +33,15 @@ func (h *KvdbGetType) HandleCommand(args []string, w io.Writer) error {
 		return fmt.Errorf("usage: %s", h.Usage())
 	}
 	key := args[0]
-	ctx := h.AppProvider().AppCore().RootCtx
-	found, err := h.KVDB.Exists(ctx, key)
+	appCore := h.AppProvider().AppCore()
+	found, err := appCore.MainKVDB.Exists(appCore.RootCtx, key)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return fmt.Errorf("key not found")
 	}
-	typeName, err := h.KVDB.Type(ctx, key)
+	typeName, err := appCore.MainKVDB.Type(appCore.RootCtx, key)
 	if err != nil {
 		return err
 	}
