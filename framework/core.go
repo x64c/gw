@@ -9,9 +9,9 @@ import (
 
 	"github.com/x64c/gw/clients"
 	"github.com/x64c/gw/kvdbs"
-	"github.com/x64c/gw/sqldbs"
 	"github.com/x64c/gw/schedjobs"
 	"github.com/x64c/gw/security"
+	"github.com/x64c/gw/sqldbs"
 	"github.com/x64c/gw/storages"
 	"github.com/x64c/gw/svc"
 	"github.com/x64c/gw/tg"
@@ -37,7 +37,7 @@ type Core struct {
 	VolatileKV               *sync.Map                                        `json:"-"`          // map[string]string
 	SessionLocks             *sync.Map                                        `json:"-"`          // map[string]*sync.Mutex for AccessTokenSessions and CookieSessions
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
-	JwksServiceConf          security.JwksServiceConf                          `json:"-"`          // LoadJwksServiceConf
+	JwksServiceConf          security.JwksServiceConf                         `json:"-"`          // LoadJwksServiceConf
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
 	SQLDBClients             map[string]sqldbs.Client                         `json:"-"`          // PrepareSQLDBClients
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps
@@ -48,7 +48,7 @@ type Core struct {
 	KVDBClients              map[string]kvdbs.Client                          `json:"-"`          // PrepareKVDBClients
 	MainKVDB                 kvdbs.DB                                         `json:"-"`          // From KVDBClients or set directly
 	LocalStorages            map[string]*storages.LocalStorage                `json:"-"`          // PrepareStorages
-	StorageClients           map[string]storages.Client                        `json:"-"`          // PrepareStorageClients
+	StorageClients           map[string]storages.Client                       `json:"-"`          // PrepareStorageClients
 
 	// internal
 	services []svc.Service

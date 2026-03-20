@@ -1,8 +1,6 @@
 package usercookiesession
 
-import (
-	"context"
-)
+import "context"
 
 type idCtxKey struct{}
 

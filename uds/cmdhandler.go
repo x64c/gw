@@ -1,8 +1,6 @@
 package uds
 
-import (
-	"io"
-)
+import "io"
 
 type CommandHandler interface {
 	Command() string // Unique Name

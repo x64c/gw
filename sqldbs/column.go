@@ -1,8 +1,6 @@
 package sqldbs
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Column is a validated SQL identifier (e.g. "user.email").
 // It cannot be created directly — only via NewColumn().

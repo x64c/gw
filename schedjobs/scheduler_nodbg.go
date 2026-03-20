@@ -2,9 +2,7 @@
 
 package schedjobs
 
-import (
-	"time"
-)
+import "time"
 
 func (s *Scheduler) runOneTimeJobs(now time.Time) {
 	key := now.Unix() / 60
