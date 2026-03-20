@@ -14,17 +14,53 @@ var (
 	OpLtEq = CompareOp{" <= "}
 )
 
-type WhereOpCond struct {
+type WhereIn struct {
+	Column Column
+	Values []any
+}
+
+type WhereOp struct {
 	Column Column
 	Op     CompareOp
 	Value  any
 }
 
-// CompoundWhereOpCond builds " AND col1 = ? AND col2 > ?" from WhereOpCond entries.
-// Intended to be appended after an existing WHERE clause (e.g. WHERE fk IN (?)).
-// startNth is the placeholder numbering offset (for PostgreSQL $n style).
+// CompoundWhereIn builds " AND col1 IN (?, ?) AND col2 IN (?, ?, ?)" from WhereIn entries.
+// Intended to be appended after an existing WHERE clause.
+// startNth is the placeholder numbering offset (e.g. PostgreSQL $n style).
 // Returns the SQL fragment and the bind values.
-func CompoundWhereOpCond(wheres []WhereOpCond, db DB, startNth int) (string, []any) {
+func CompoundWhereIn(wheres []WhereIn, db DB, startNth int) (string, []any) {
+	if len(wheres) == 0 {
+		return "", nil
+	}
+	var b strings.Builder
+	var vals []any
+	nth := startNth
+	for _, w := range wheres {
+		if len(w.Values) == 0 {
+			continue
+		}
+		b.WriteString(" AND ")
+		b.WriteString(w.Column.Name())
+		b.WriteString(" IN (")
+		for i, v := range w.Values {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(db.SinglePlaceholder(nth))
+			nth++
+			vals = append(vals, v)
+		}
+		b.WriteString(")")
+	}
+	return b.String(), vals
+}
+
+// CompoundWhereOp builds " AND col1 = ? AND col2 > ?" from WhereOp entries.
+// Intended to be appended after an existing WHERE clause (e.g. WHERE fk IN (?)).
+// startNth is the placeholder numbering offset (e.g. PostgreSQL $n style).
+// Returns the SQL fragment and the bind values.
+func CompoundWhereOp(wheres []WhereOp, db DB, startNth int) (string, []any) {
 	if len(wheres) == 0 {
 		return "", nil
 	}

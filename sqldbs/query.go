@@ -9,6 +9,9 @@ import (
 	"github.com/x64c/gw/orm/coll"
 )
 
+// QueryCollectionByColumn queries models where a column matches one or more values.
+// Uses WHERE column = ? for single value, WHERE column IN (?, ...) for multiple.
+// Returns a collection of scanned models.
 func QueryCollectionByColumn[
 	M any, // Model struct
 	MP ScannableIdentifiable[M, ID], // *Model implementing ScannableIdentifiable[M, ID]
@@ -51,4 +54,30 @@ func QueryCollectionByColumn[
 		}
 	}()
 	return ScanRowsToCollection[M, MP, ID](rows)
+}
+
+// QueryCollection queries models into a collection using QueryOpts.
+// Builds a standalone clause from QueryOpts, starting with WHERE if any conditions exist.
+func QueryCollection[
+	M any, // Model struct
+	MP ScannableIdentifiable[M, ID], // *Model implementing ScannableIdentifiable[M, ID]
+	ID comparable,
+](
+	ctx context.Context,
+	db DB,
+	sqlSelectBase string,
+	queryOpts QueryOpts,
+) (*coll.Collection[MP, ID], error) {
+	var args []any
+	whereInSQL, whereInArgs := CompoundWhereIn(queryOpts.WhereIns, db, len(args)+1)
+	args = append(args, whereInArgs...)
+	whereOpSQL, whereOpArgs := CompoundWhereOp(queryOpts.WhereOps, db, len(args)+1)
+	args = append(args, whereOpArgs...)
+	clause := whereInSQL + whereOpSQL + CompoundWhereNotNullCond(queryOpts.WhereNotNulls) + CompoundWhereNullCond(queryOpts.WhereNulls)
+	if queryOpts.HasWhere() {
+		// Replace leading " AND" with " WHERE"
+		clause = " WHERE" + clause[4:]
+	}
+	sqlStmt := sqlSelectBase + clause + OrderByClause(queryOpts.OrderBys)
+	return RawQueryCollection[M, MP, ID](ctx, db, sqlStmt, args...)
 }
