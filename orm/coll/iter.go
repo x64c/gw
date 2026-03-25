@@ -1,8 +1,6 @@
 package coll
 
-import (
-	"github.com/x64c/gw/model"
-)
+import "github.com/x64c/gw/model"
 
 // EnumerateToSlice iterates over every model in the collection and calls yield for each.
 // Every model contributes exactly one value. No skipping.

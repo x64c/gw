@@ -1,8 +1,6 @@
 package sqldbs
 
-import (
-	"github.com/x64c/gw/model"
-)
+import "github.com/x64c/gw/model"
 
 type scanFieldsProvider interface {
 	FieldsToScan() []any

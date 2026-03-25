@@ -2,9 +2,7 @@
 
 package schedjobs
 
-import (
-	"time"
-)
+import "time"
 
 func (job *CronJob) Matches(now time.Time) bool {
 	if (job.Minutes & (1 << now.Minute())) == 0 {

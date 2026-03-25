@@ -1,8 +1,6 @@
 package kvdbs
 
-import (
-	"encoding/json/jsontext"
-)
+import "encoding/json/jsontext"
 
 type Client interface {
 	CreateDB(name string, conf jsontext.Value) error

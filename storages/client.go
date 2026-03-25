@@ -1,8 +1,6 @@
 package storages
 
-import (
-	"encoding/json/jsontext"
-)
+import "encoding/json/jsontext"
 
 type Client interface {
 	CreateStorage(name string, conf jsontext.Value) error

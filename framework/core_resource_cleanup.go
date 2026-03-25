@@ -1,8 +1,6 @@
 package framework
 
-import (
-	"log"
-)
+import "log"
 
 func (c *Core) ResourceCleanUp() {
 	log.Println("[INFO] App Resource Cleaning Up...")

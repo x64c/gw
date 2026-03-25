@@ -2,9 +2,7 @@
 
 package throttle
 
-import (
-	"time"
-)
+import "time"
 
 func (s *BucketStore) Cleanup(now time.Time) {
 	for _, g := range s.groups {

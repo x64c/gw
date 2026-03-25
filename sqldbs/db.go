@@ -13,7 +13,8 @@ type DB interface {
 	BeginTx(ctx context.Context) (Tx, error)
 	Ping(ctx context.Context) error
 
-	SinglePlaceholder(nth ...int) string
-	Placeholders(cnt int, start ...int) string
+	FirstPlaceholder() string
+	NthPlaceholder(n int) string
+	InPlaceholders(start, cnt int) string
 	RawSQLStore() *RawSQLStore
 }

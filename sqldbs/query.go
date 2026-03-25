@@ -20,7 +20,7 @@ func QueryCollectionByColumn[
 ](
 	ctx context.Context,
 	db DB,
-	sqlSelectBase string,
+	sqlSelectBase string, // must be clean from WHERE and bindings
 	column Column,
 	values []V,
 	orderBys ...OrderBy,
@@ -33,11 +33,11 @@ func QueryCollectionByColumn[
 		err  error
 	)
 	if len(values) == 1 {
-		whereClause := fmt.Sprintf(" WHERE %s = %s", column.Name(), db.SinglePlaceholder())
+		whereClause := fmt.Sprintf(" WHERE %s = %s", column.Name(), db.FirstPlaceholder())
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 		rows, err = db.QueryRows(ctx, sqlStmt, values[0])
 	} else {
-		whereClause := fmt.Sprintf(" WHERE %s IN (%s)", column.Name(), db.Placeholders(len(values)))
+		whereClause := fmt.Sprintf(" WHERE %s IN (%s)", column.Name(), db.InPlaceholders(1, len(values)))
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 		valuesAsAny := make([]any, len(values))
 		for i, v := range values {
@@ -65,19 +65,10 @@ func QueryCollection[
 ](
 	ctx context.Context,
 	db DB,
-	sqlSelectBase string,
+	sqlSelectBase string, // must be clean from WHERE and bindings
 	queryOpts QueryOpts,
 ) (*coll.Collection[MP, ID], error) {
-	var args []any
-	whereInSQL, whereInArgs := CompoundWhereIn(queryOpts.WhereIns, db, len(args)+1)
-	args = append(args, whereInArgs...)
-	whereOpSQL, whereOpArgs := CompoundWhereOp(queryOpts.WhereOps, db, len(args)+1)
-	args = append(args, whereOpArgs...)
-	clause := whereInSQL + whereOpSQL + CompoundWhereNotNullCond(queryOpts.WhereNotNulls) + CompoundWhereNullCond(queryOpts.WhereNulls)
-	if queryOpts.HasWhere() {
-		// Replace leading " AND" with " WHERE"
-		clause = " WHERE" + clause[4:]
-	}
-	sqlStmt := sqlSelectBase + clause + OrderByClause(queryOpts.OrderBys)
+	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
+	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys)
 	return RawQueryCollection[M, MP, ID](ctx, db, sqlStmt, args...)
 }
