@@ -13,10 +13,19 @@ type DB interface {
 	BeginTx(ctx context.Context) (Tx, error)
 	Ping(ctx context.Context) error
 
+	// Back-reference to the parent Client
+
+	Client() Client
+
+	// Convenience: delegates to Client
+
 	FirstPlaceholder() string
 	NthPlaceholder(n int) string
 	InPlaceholders(start, cnt int) string
 	RawSQLStore(name string) *RawSQLStore
+
+	// Per-DB primary store shortcut (set by app at boot)
+
 	MainRawSQLStore() *RawSQLStore
 	SetMainRawSQLStore(name string)
 }
