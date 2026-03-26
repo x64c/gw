@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"io/fs"
+
 	"github.com/x64c/gw/clients"
 	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/schedjobs"
@@ -39,6 +41,7 @@ type Core struct {
 	ActionLocks              *sync.Map                                        `json:"-"`          // map[string]struct{}
 	JwksServiceConf          security.JwksServiceConf                         `json:"-"`          // LoadJwksServiceConf
 	BaseHttpClient           *http.Client                                     `json:"-"`          // for requests to external apis
+	RawSQLFSMap              map[string]fs.FS                                 `json:"-"`          // Set before PrepareSQLDBClients
 	SQLDBClients             map[string]sqldbs.Client                         `json:"-"`          // PrepareSQLDBClients
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions

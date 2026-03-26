@@ -16,5 +16,7 @@ type DB interface {
 	FirstPlaceholder() string
 	NthPlaceholder(n int) string
 	InPlaceholders(start, cnt int) string
-	RawSQLStore() *RawSQLStore
+	RawSQLStore(name string) *RawSQLStore
+	MainRawSQLStore() *RawSQLStore
+	SetMainRawSQLStore(name string)
 }

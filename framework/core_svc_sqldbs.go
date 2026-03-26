@@ -4,18 +4,24 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/x64c/gw/sqldbs"
 )
 
-func (c *Core) PrepareSQLDBClients(sqlFS fs.FS, preparers ...func(string, map[string]sqldbs.Client, fs.FS) error) error {
+func (c *Core) PrepareSQLDBClients(preparers ...func(string, map[string]sqldbs.Client) error) error {
 	c.SQLDBClients = make(map[string]sqldbs.Client)
 	for _, fn := range preparers {
-		if err := fn(c.AppRoot, c.SQLDBClients, sqlFS); err != nil {
+		if err := fn(c.AppRoot, c.SQLDBClients); err != nil {
 			return err
+		}
+	}
+	for fsName, sqlFS := range c.RawSQLFSMap {
+		for clientName, client := range c.SQLDBClients {
+			if err := client.LoadRawSQL(fsName, sqlFS); err != nil {
+				return fmt.Errorf("sqldb client %q: load %q: %w", clientName, fsName, err)
+			}
 		}
 	}
 	return nil
