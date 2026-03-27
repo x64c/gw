@@ -1,8 +1,6 @@
 package contxt
 
-import (
-	"context"
-)
+import "context"
 
 type UnaryInjectorFunc[T any] func(context.Context, T) (context.Context, error)
 

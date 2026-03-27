@@ -9,6 +9,43 @@ import (
 	"github.com/x64c/gw/orm/coll"
 )
 
+// QueryFirst queries a single model using QueryOpts with LIMIT 1.
+// Returns the item or ErrNoRows if not found.
+// QueryOpts.Limit must be 0 (omitted) or 1; greater than 1 returns an error.
+func QueryFirst[
+	M any, // Model struct
+	MP Scannable[M], // *Model implementing Scannable[M]
+](
+	ctx context.Context,
+	db DB,
+	sqlSelectBase string, // must be clean from WHERE and bindings
+	queryOpts QueryOpts,
+) (*M, error) {
+	if queryOpts.Limit > 1 {
+		return nil, errors.New("QueryFirst does not accept Limit greater than 1")
+	}
+	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
+	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys) + LimitClause(1)
+	return RawQueryItem[M, MP](ctx, db, sqlStmt, args...)
+}
+
+// QueryCollection queries models into a collection using QueryOpts.
+// Builds a standalone clause from QueryOpts, starting with WHERE if any conditions exist.
+func QueryCollection[
+	M any, // Model struct
+	MP ScannableIdentifiable[M, ID], // *Model implementing ScannableIdentifiable[M, ID]
+	ID comparable,
+](
+	ctx context.Context,
+	db DB,
+	sqlSelectBase string, // must be clean from WHERE and bindings
+	queryOpts QueryOpts,
+) (*coll.Collection[MP, ID], error) {
+	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
+	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys) + LimitClause(queryOpts.Limit)
+	return RawQueryCollection[M, MP, ID](ctx, db, sqlStmt, args...)
+}
+
 // QueryCollectionByColumn queries models where a column matches one or more values.
 // Uses WHERE column = ? for single value, WHERE column IN (?, ...) for multiple.
 // Returns a collection of scanned models.
@@ -54,21 +91,4 @@ func QueryCollectionByColumn[
 		}
 	}()
 	return ScanRowsToCollection[M, MP, ID](rows)
-}
-
-// QueryCollection queries models into a collection using QueryOpts.
-// Builds a standalone clause from QueryOpts, starting with WHERE if any conditions exist.
-func QueryCollection[
-	M any, // Model struct
-	MP ScannableIdentifiable[M, ID], // *Model implementing ScannableIdentifiable[M, ID]
-	ID comparable,
-](
-	ctx context.Context,
-	db DB,
-	sqlSelectBase string, // must be clean from WHERE and bindings
-	queryOpts QueryOpts,
-) (*coll.Collection[MP, ID], error) {
-	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
-	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys)
-	return RawQueryCollection[M, MP, ID](ctx, db, sqlStmt, args...)
 }
