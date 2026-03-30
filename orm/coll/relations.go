@@ -76,14 +76,28 @@ func LinkHasMany[
 	relationFieldPtr func(PP) **Collection[CP, CID], // on the parent
 ) {
 	childCollGrpByPID := make(map[PID]*Collection[CP, CID], parents.Len())
-	for _, child := range children.itemsMap {
-		pid := foreignKey(child) // child's FK to parent id
-		childColl, ok := childCollGrpByPID[pid]
-		if !ok {
-			childColl = NewEmptyOrderedCollection[CP, CID]()
-			childCollGrpByPID[pid] = childColl
+	if len(children.order) > 0 {
+		// Ordered: iterate in order to preserve SQL ORDER BY
+		for _, cid := range children.order {
+			child := children.itemsMap[cid]
+			pid := foreignKey(child)
+			childColl, ok := childCollGrpByPID[pid]
+			if !ok {
+				childColl = NewEmptyOrderedCollection[CP, CID]()
+				childCollGrpByPID[pid] = childColl
+			}
+			childColl.Add(child)
 		}
-		childColl.Add(child)
+	} else {
+		for _, child := range children.itemsMap {
+			pid := foreignKey(child)
+			childColl, ok := childCollGrpByPID[pid]
+			if !ok {
+				childColl = NewEmptyOrderedCollection[CP, CID]()
+				childCollGrpByPID[pid] = childColl
+			}
+			childColl.Add(child)
+		}
 	}
 	for pid, parent := range parents.itemsMap {
 		if childColl, ok := childCollGrpByPID[pid]; ok {
