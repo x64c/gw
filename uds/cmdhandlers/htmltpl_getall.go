@@ -30,28 +30,25 @@ func (h *HtmltplGetAll) Usage() string {
 func (h *HtmltplGetAll) HandleCommand(_ []string, w io.Writer) error {
 	appCore := h.AppProvider().AppCore()
 
-	htmlTplStore := appCore.HTMLTemplateStore
-	if htmlTplStore == nil {
+	store := appCore.HTMLTemplateStore
+	if store == nil {
 		return fmt.Errorf("html template store not ready")
 	}
-	_, _ = fmt.Fprintln(w, "< File Templates >")
-	for key, t := range htmlTplStore.FileTemplates {
-		// a key is for a template set
-		_, _ = fmt.Fprintf(w, "\n________ Template Set: %s ________\n", key)
-		// collect all templates inside the set
-		all := t.Templates()
-		// each internal template
-		for _, tmpl := range all {
-			_, _ = fmt.Fprintf(w, "\n\t\t[ %s ]\n\n", tmpl.Name())
-			if tmpl.Tree != nil && tmpl.Tree.Root != nil {
-				_, _ = fmt.Fprintln(w, tmpl.Tree.Root.String())
-			} else {
-				_, _ = fmt.Fprintln(w, "(no AST)")
+	for storeKey, templates := range store {
+		_, _ = fmt.Fprintf(w, "\n======== Store: %s ========\n", storeKey)
+		for key, t := range templates {
+			_, _ = fmt.Fprintf(w, "\n________ Template Set: %s ________\n", key)
+			for _, tmpl := range t.Templates() {
+				_, _ = fmt.Fprintf(w, "\n\t\t[ %s ]\n\n", tmpl.Name())
+				if tmpl.Tree != nil && tmpl.Tree.Root != nil {
+					_, _ = fmt.Fprintln(w, tmpl.Tree.Root.String())
+				} else {
+					_, _ = fmt.Fprintln(w, "(no AST)")
+				}
+				_, _ = fmt.Fprintln(w, " ")
 			}
-			_, _ = fmt.Fprintln(w, " ")
 		}
 	}
-	// ToDo: Derived
 	_, _ = fmt.Fprintln(w, "________________________________________________")
 	return nil
 }

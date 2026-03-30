@@ -1,19 +1,7 @@
 package framework
 
-import (
-	"path/filepath"
+import "html/template"
 
-	"github.com/x64c/gw/tpl"
-)
-
-func (c *Core) PrepareHTMLTemplateStore() error {
-	store := tpl.NewHTMLTemplateStore()
-
-	if err := store.LoadFileTemplates(filepath.Join(c.AppRoot, "templates", "html")); err != nil {
-		return err
-	}
-	// ToDo: build derived
-
-	c.HTMLTemplateStore = store
-	return nil
+func (c *Core) PrepareHTMLTemplateStore() {
+	c.HTMLTemplateStore = make(map[string]map[string]*template.Template)
 }

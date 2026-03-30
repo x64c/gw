@@ -2,6 +2,7 @@ package framework
 
 import (
 	"context"
+	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 	"github.com/x64c/gw/svc"
 	"github.com/x64c/gw/tg"
 	"github.com/x64c/gw/throttle"
-	"github.com/x64c/gw/tpl"
 	"github.com/x64c/gw/uds"
 	"github.com/x64c/gw/web"
 	"github.com/x64c/gw/web/usercookiesession"
@@ -44,7 +44,7 @@ type Core struct {
 	SQLDBClients             map[string]sqldbs.Client                         `json:"-"`          // PrepareSQLDBClients
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions
-	HTMLTemplateStore        *tpl.HTMLTemplateStore                           `json:"-"`          // PrepareHTMLTemplateStore
+	HTMLTemplateStore        map[string]map[string]*template.Template         `json:"-"`          // PrepareHTMLTemplateStore
 	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
 	TypedGroupRegistry       map[string]tg.RegGrp                             `json:"-"`          // Group Registry for typed groups
 	KVDBClients              map[string]kvdbs.Client                          `json:"-"`          // PrepareKVDBClients
