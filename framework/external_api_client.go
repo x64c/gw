@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 
-	"github.com/x64c/gw/reason"
 	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/web/responses"
 	"github.com/x64c/gw/web/usercookiesession"
@@ -41,7 +41,7 @@ func (c *ExternalAPIClient) GetJWKS(ctx context.Context) (*security.JWKS, error)
 		return nil, err
 	}
 	if upstrRes.StatusCode == http.StatusNotFound {
-		return nil, responses.HTTPErrorNotFound
+		return nil, errors.New("JWKS not found")
 	}
 	if upstrRes.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP Status Code: %d", upstrRes.StatusCode)
@@ -67,7 +67,7 @@ func (c *ExternalAPIClient) JWKSFileResponse(w http.ResponseWriter, r *http.Requ
 	}
 	if upstrRes.StatusCode == http.StatusNotFound {
 		// 404 not found -> raw error message sent before wrapped into JSON
-		responses.WriteSimpleErrorJSON(w, http.StatusNotFound, fmt.Sprintf("%v", responses.HTTPErrorNotFound))
+		responses.WriteSimpleErrorJSON(w, http.StatusNotFound, "JWKS not found")
 		return
 	}
 	defer func() {
@@ -153,7 +153,7 @@ func (c *ExternalAPIClient) RefreshAPITokensForCookieSession(ctx context.Context
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
 		return nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+			Code: responses.CookieSessionExpired, Message: "no session id in the context",
 		}
 	}
 	cookieSessionMgr := c.Core.UserCookieSessionManager
@@ -161,14 +161,14 @@ func (c *ExternalAPIClient) RefreshAPITokensForCookieSession(ctx context.Context
 	uidStr, err := cookieSessionMgr.SessionIDToUIDStrFromKVDB(ctx, sessionID)
 	if err != nil {
 		return nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionExpired, Message: "no session info for the session id",
+			Code: responses.CookieSessionExpired, Message: "no session info for the session id",
 		}
 	}
 
 	refreshToken, err := cookieSessionMgr.FetchExternalRefreshToken(ctx, sessionID, c.ApiID)
 	if err != nil {
 		return nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionAPITokenNotFound, Message: "no refresh token for the session",
+			Code: responses.CookieSessionAPITokenNotFound, Message: "no refresh token for the session",
 		}
 	}
 
@@ -205,13 +205,13 @@ func (c *ExternalAPIClient) fetchJSON(ctx context.Context, method string, endpoi
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+			Code: responses.CookieSessionExpired, Message: "no session id in the context",
 		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+			Code: responses.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
 		}
 	}
 	upstrRes, resErr := c.RequestJSON(ctx, accessToken, method, endpoint)
@@ -224,7 +224,7 @@ func (c *ExternalAPIClient) fetchJSON(ctx context.Context, method string, endpoi
 		var resData any
 		if err = json.UnmarshalRead(upstrRes.Body, &resData); err != nil {
 			return nil, nil, http.StatusInternalServerError, &responses.Error{
-				Code: reason.JSONUnmarshalFailed, Message: err.Error(), Cause: err,
+				Code: responses.JSONUnmarshalFailed, Message: err.Error(), Cause: err,
 			}
 		}
 		return resData, upstrRes.Header, http.StatusOK, nil
@@ -234,7 +234,7 @@ func (c *ExternalAPIClient) fetchJSON(ctx context.Context, method string, endpoi
 	var apiErr responses.Error
 	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
 		return nil, nil, upstrRes.StatusCode, &responses.Error{
-			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+			Code: responses.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
 		}
 	}
 	return nil, nil, upstrRes.StatusCode, &apiErr
@@ -248,7 +248,7 @@ func (c *ExternalAPIClient) FetchJSONRetriable(ctx context.Context, method strin
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.Code == reason.AccessTokenExpired
+		shouldRetry = resErr.Code == responses.AccessTokenExpired
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
@@ -268,13 +268,13 @@ func (c *ExternalAPIClient) fetchPDFBytes(ctx context.Context, method string, en
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+			Code: responses.CookieSessionExpired, Message: "no session id in the context",
 		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+			Code: responses.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
 		}
 	}
 	upstrUrl := c.Conf.Host + endpoint
@@ -306,7 +306,7 @@ func (c *ExternalAPIClient) fetchPDFBytes(ctx context.Context, method string, en
 	var apiErr responses.Error
 	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
 		return nil, nil, upstrRes.StatusCode, &responses.Error{
-			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+			Code: responses.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
 		}
 	}
 	return nil, nil, upstrRes.StatusCode, &apiErr
@@ -320,7 +320,7 @@ func (c *ExternalAPIClient) FetchPDFBytesRetriable(ctx context.Context, method s
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.Code == reason.AccessTokenExpired
+		shouldRetry = resErr.Code == responses.AccessTokenExpired
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
@@ -340,13 +340,13 @@ func (c *ExternalAPIClient) fetchPDFStream(ctx context.Context, method string, e
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+			Code: responses.CookieSessionExpired, Message: "no session id in the context",
 		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
 		return nil, nil, http.StatusUnauthorized, &responses.Error{
-			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+			Code: responses.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
 		}
 	}
 	upstrUrl := c.Conf.Host + endpoint
@@ -375,7 +375,7 @@ func (c *ExternalAPIClient) fetchPDFStream(ctx context.Context, method string, e
 	var apiErr responses.Error
 	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
 		return nil, nil, upstrRes.StatusCode, &responses.Error{
-			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+			Code: responses.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
 		}
 	}
 	return nil, nil, upstrRes.StatusCode, &apiErr
@@ -389,7 +389,7 @@ func (c *ExternalAPIClient) FetchPDFStreamRetriable(ctx context.Context, method 
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.Code == reason.AccessTokenExpired
+		shouldRetry = resErr.Code == responses.AccessTokenExpired
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}

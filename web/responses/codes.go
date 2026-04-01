@@ -1,4 +1,4 @@
-package reason
+package responses
 
 // Framework-level logic error codes (1000-1999).
 // App-level codes use 2000+ in their own `reasons` package.
