@@ -4,23 +4,35 @@ package reason
 // App-level codes use 2000+ in their own `reasons` package.
 // Code 0 = no logic code (client falls back to HTTP status).
 const (
-	// Token — validity (1000-1049)
+	// Token validity
 
 	AccessTokenExpired  = 1000 // access token expired or not found in store
 	RefreshTokenExpired = 1001 // refresh token expired, used, or not found in store
 	InvalidAccessToken  = 1002 // access token exists but fails validation
 	InvalidRefreshToken = 1003 // refresh token exists but uid/client mismatch
 
-	// Token — availability (1050-1099)
+	// Token availability
 
-	APITokenNotFound = 1050 // required API token is missing
+	APITokenNotFound = 1100 // required API token is missing
 
-	// Cookie Session (1100-1199)
+	// Cookie Session
 
-	CookieSessionExpired          = 1100 // cookie session not found or expired in store
-	CookieSessionAPITokenNotFound = 1101 // cookie session alive but required API token missing
+	CookieSessionExpired          = 1200 // cookie session not found or expired in store
+	CookieSessionAPITokenNotFound = 1201 // cookie session alive but required API token missing
 
-	// Infrastructure (1200-1299)
+	// Auth
 
-	JSONUnmarshalFailed = 1200 // failed to unmarshal JSON response
+	InvalidAuthUID = 1300 // authenticated user ID missing from context
+
+	// Permission
+
+	PermissionDenied = 1400 // user lacks required permission
+
+	// JSON
+
+	JSONUnmarshalFailed = 1500 // failed to unmarshal JSON response
+
+	// SQL
+
+	SQLNotFoundInStore = 1600 // SQL statement not found in RawSQLStore
 )

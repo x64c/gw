@@ -114,6 +114,23 @@ func (m *Manager) RefreshSessionCookie(w http.ResponseWriter, encValue string) {
 	})
 }
 
+// LogoutRedirect clears the cookie session (KVDB + cookie) and redirects to the given path.
+// No return — KVDB cleanup is best effort, redirect always proceeds.
+// Caution: this writes a redirect response to w. If called within another func,
+// ensure the caller knows not to write to w afterward.
+func (m *Manager) LogoutRedirect(w http.ResponseWriter, r *http.Request, redirectPath string) {
+	sessionCookie, err := r.Cookie(CookieName)
+	if err == nil {
+		sessionIDBytes, err := m.Cipher.DecodeDecrypt(sessionCookie.Value)
+		if err == nil {
+			baseKey := m.SessionIDToKVDBKey(string(sessionIDBytes))
+			_, _ = m.KVDB.Delete(r.Context(), baseKey, baseKey+":access_tokens", baseKey+":refresh_tokens")
+		}
+	}
+	m.RemoveSessionCookie(w)
+	http.Redirect(w, r, redirectPath, http.StatusSeeOther)
+}
+
 func (m *Manager) RemoveSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
