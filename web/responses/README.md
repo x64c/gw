@@ -40,7 +40,7 @@ The API returns `{"message": "...", "code": <int>}` on errors. The `code` field 
 
 ## Guidelines
 
-- **Use named constants only** (e.g. `reason.ResourceNotFound`), never raw integers. The underlying numbers are internal (because Go has no enum) and may change between versions.
+- **Use named constants only** (e.g. `responses.ResourceNotFound`), never raw integers. The underlying numbers are internal (because Go has no enum) and may change between versions.
 - **API responses to clients**: use logic code for detail.
 - **Low-level, internal endpoints**: simple error messages can be enough.
 - **Resource not found vs empty data**: Use `ResourceNotFound` error only when the specific resource MUST exist but is missing.
