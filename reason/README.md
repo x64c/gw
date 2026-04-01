@@ -45,3 +45,4 @@ The API returns `{"message": "...", "code": <int>}` on errors. The `code` field 
 - **Low-level, internal endpoints**: simple error messages can be enough.
 - **Resource not found vs empty data**: Use `ResourceNotFound` error only when the specific resource MUST exist but is missing.
 - **Permission vs Resource access**: `PermissionDenied` = action-level (can't do this operation). `ResourceAccessDenied` = data-level (can't access this specific item).
+- **App-specific codes**: define your own in a separate package. Framework codes are below 2000, app codes start at 2000+.
