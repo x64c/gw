@@ -28,11 +28,16 @@ const (
 
 	PermissionDenied = 1400 // user lacks required permission
 
+	// Resource
+
+	ResourceNotFound     = 1500 // expected resource must exist but is missing
+	ResourceAccessDenied = 1501 // resource exists but user cannot access it
+
 	// JSON
 
-	JSONUnmarshalFailed = 1500 // failed to unmarshal JSON response
+	JSONUnmarshalFailed = 1600 // failed to unmarshal JSON response
 
 	// SQL
 
-	SQLNotFoundInStore = 1600 // SQL statement not found in RawSQLStore
+	SQLNotFoundInStore = 1700 // SQL statement not found in RawSQLStore
 )
