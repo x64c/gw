@@ -31,8 +31,7 @@ func WriteSimpleErrorJSON(w http.ResponseWriter, httpStatusCode int, msg string)
 }
 
 func WriteErrorJSON(w http.ResponseWriter, httpStatusCode int, logicCode int, msg string) {
-	payload := Message{Type: "error", Message: msg, Code: logicCode}
-	EncodeWriteJSON(w, httpStatusCode, payload)
+	EncodeWriteJSON(w, httpStatusCode, Error{Message: msg, Code: logicCode})
 }
 
 func WriteAnyDataOrErrorJSON(w http.ResponseWriter, resData any, httpStatusCode int, err error) {

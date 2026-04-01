@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/v2"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -87,11 +86,11 @@ func (c *ExternalAPIClient) JWKSFileResponse(w http.ResponseWriter, r *http.Requ
 
 // RequestJSON sends a request and returns the response.
 // The caller is responsible for closing response.Body.
-func (c *ExternalAPIClient) RequestJSON(ctx context.Context, accessToken string, method string, endpoint string) (*http.Response, error) {
+func (c *ExternalAPIClient) RequestJSON(ctx context.Context, accessToken string, method string, endpoint string) (*http.Response, *responses.Error) {
 	upstrUrl := c.Conf.Host + endpoint
 	upstrReq, err := http.NewRequestWithContext(ctx, method, upstrUrl, nil)
 	if err != nil {
-		return nil, err
+		return nil, &responses.Error{Message: err.Error(), Cause: err}
 	}
 
 	upstrReq.Header.Set("Client-Id", c.Conf.ClientID)
@@ -101,7 +100,7 @@ func (c *ExternalAPIClient) RequestJSON(ctx context.Context, accessToken string,
 
 	upstrRes, err := c.Do(upstrReq)
 	if err != nil {
-		return nil, err
+		return nil, &responses.Error{Message: err.Error(), Cause: err}
 	}
 	return upstrRes, nil
 }
@@ -147,141 +146,141 @@ func (c *ExternalAPIClient) RequestReissueAccessTokenWithRefreshTokenAndUserID(c
 	return c.Do(upstrReq)
 }
 
-func (c *ExternalAPIClient) UpdateTokens(ctx context.Context) (*security.AccessTokenPair, int, error) {
-	log.Printf("[DEBUG] preparing to request to update tokens for %q", c.ApiID)
+// RefreshAPITokensForCookieSession requests the external API to reissue the access/refresh token pair
+// associated with the current cookie session, and updates the KVDB with the new pair.
+// A cookie session may have multiple ExternalAPIClients. Call this on each client to refresh its tokens.
+func (c *ExternalAPIClient) RefreshAPITokensForCookieSession(ctx context.Context) (*security.AccessTokenPair, int, *responses.Error) {
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
-		return nil, http.StatusUnauthorized, errors.New("no session iD in the context")
+		return nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+		}
 	}
-	log.Printf("[DEBUG] sessionID %q for UpdateTokens", sessionID)
 	cookieSessionMgr := c.Core.UserCookieSessionManager
 
 	uidStr, err := cookieSessionMgr.SessionIDToUIDStrFromKVDB(ctx, sessionID)
 	if err != nil {
-		return nil, http.StatusUnauthorized, errors.New("no session info for the session id")
+		return nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionExpired, Message: "no session info for the session id",
+		}
 	}
-	refreshToken, err := cookieSessionMgr.FetchExternalRefreshToken(ctx, sessionID, c.ApiID)
 
-	log.Printf("[DEBUG] requesting to update tokens with refresh token %q", refreshToken)
+	refreshToken, err := cookieSessionMgr.FetchExternalRefreshToken(ctx, sessionID, c.ApiID)
+	if err != nil {
+		return nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionAPITokenNotFound, Message: "no refresh token for the session",
+		}
+	}
 
 	upstrRes, err := c.RequestReissueAccessTokenWithRefreshTokenAndUserID(ctx, refreshToken, uidStr)
 	if err != nil {
-		return nil, http.StatusServiceUnavailable, err
+		return nil, http.StatusServiceUnavailable, &responses.Error{Message: err.Error()}
 	}
 	defer func() { _ = upstrRes.Body.Close() }()
 
-	log.Printf("[DEBUG] got UpdateTokens response from upstream with status code %d", upstrRes.StatusCode)
-
 	if upstrRes.StatusCode != http.StatusOK {
-		return nil, upstrRes.StatusCode, errors.New(upstrRes.Status)
+		// Parse the error response to preserve the logic code
+		var resErr responses.Error
+		if err = json.UnmarshalRead(upstrRes.Body, &resErr); err != nil {
+			return nil, upstrRes.StatusCode, &responses.Error{
+				Message: fmt.Sprintf("reissue failed (http %d), could not parse response", upstrRes.StatusCode),
+			}
+		}
+		return nil, upstrRes.StatusCode, &resErr
 	}
 
-	newTokenPair := security.AccessTokenPair{}
+	var newTokenPair security.AccessTokenPair
 	if err = json.UnmarshalRead(upstrRes.Body, &newTokenPair); err != nil {
-		log.Print("[DEBUG] failed to unmarshal new token pair")
-		return nil, upstrRes.StatusCode, err
+		return nil, upstrRes.StatusCode, &responses.Error{Message: err.Error()}
 	}
 
-	// Update Tokens
 	if err = cookieSessionMgr.StoreExternalTokenPairInKVDB(ctx, sessionID, c.ApiID, newTokenPair.AccessToken, newTokenPair.RefreshToken); err != nil {
-		log.Printf("[DEBUG] failed to store new token pair in kvdb: %q, %q", newTokenPair.AccessToken, newTokenPair.RefreshToken)
-		return nil, http.StatusInternalServerError, err
+		return nil, http.StatusInternalServerError, &responses.Error{Message: err.Error()}
 	}
-	log.Printf("[DEBUG] tokens updated: %q, %q", newTokenPair.AccessToken, newTokenPair.RefreshToken)
 
 	return &newTokenPair, http.StatusOK, nil
 }
 
-func (c *ExternalAPIClient) fetchJSON(ctx context.Context, method string, endpoint string) (any, int, error) { // data, http.StatusCode, error
+func (c *ExternalAPIClient) fetchJSON(ctx context.Context, method string, endpoint string) (any, http.Header, int, *responses.Error) { // data, response header, http status, error
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
-		return nil, http.StatusBadRequest, errors.New("no session iD in the context")
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
-		return nil, http.StatusBadRequest, fmt.Errorf("no access token for the api %q in the session", c.ApiID)
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+		}
 	}
-	upstrRes, err := c.RequestJSON(ctx, accessToken, method, endpoint)
-	if err != nil {
-		return nil, http.StatusServiceUnavailable, err
+	upstrRes, resErr := c.RequestJSON(ctx, accessToken, method, endpoint)
+	if resErr != nil {
+		return nil, nil, http.StatusServiceUnavailable, resErr
 	}
 	defer func() { _ = upstrRes.Body.Close() }()
 
-	if upstrRes.StatusCode == http.StatusNotFound {
-		// 404 not found -> raw error message sent before wrapped into JSON
-		// ToDo: Handle the case: found the endpoint, but requested data resource not found
-		return nil, http.StatusNotFound, responses.HTTPErrorNotFound
-	}
-
-	if upstrRes.StatusCode != http.StatusOK {
-		var resMsg responses.Message
-		err = json.UnmarshalRead(upstrRes.Body, &resMsg)
-		if err != nil {
-			return nil, http.StatusInternalServerError, errors.New("failed to unmarshal server message")
+	if upstrRes.StatusCode == http.StatusOK {
+		var resData any
+		if err = json.UnmarshalRead(upstrRes.Body, &resData); err != nil {
+			return nil, nil, http.StatusInternalServerError, &responses.Error{
+				Code: reason.JSONUnmarshalFailed, Message: err.Error(), Cause: err,
+			}
 		}
-		return resMsg, upstrRes.StatusCode, nil
+		return resData, upstrRes.Header, http.StatusOK, nil
 	}
 
-	// Now we expect JSON data response body
-	var resData any
-	if err = json.UnmarshalRead(upstrRes.Body, &resData); err != nil {
-		return nil, upstrRes.StatusCode, err
+	// Error path — parse structured error from API
+	var apiErr responses.Error
+	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
+		return nil, nil, upstrRes.StatusCode, &responses.Error{
+			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+		}
 	}
-
-	return resData, upstrRes.StatusCode, nil
+	return nil, nil, upstrRes.StatusCode, &apiErr
 }
 
-func (c *ExternalAPIClient) FetchJSONRetriable(ctx context.Context, method string, endpoint string) (any, int, error) { // data, http.StatusCode, error
-	log.Print("[DEBUG] preparing to request json to main backend")
-	resData, httpStatusCode, err := c.fetchJSON(ctx, method, endpoint)
-	if err != nil {
-		// internal error
-		log.Printf("[DEBUG] [ERROR] http code: %d _ internal error %v", httpStatusCode, err)
-		return resData, httpStatusCode, err
+func (c *ExternalAPIClient) FetchJSONRetriable(ctx context.Context, method string, endpoint string) (any, http.Header, int, *responses.Error) { // data, response header, http status, error
+	resData, resHeader, httpStatus, resErr := c.fetchJSON(ctx, method, endpoint)
+	if resErr == nil {
+		return resData, resHeader, httpStatus, nil
 	}
-	if httpStatusCode == http.StatusUnauthorized {
-		log.Printf("[DEBUG] upstream response http code: %d", httpStatusCode)
-		// resData is expected to responses.Message
-		resMessage, ok := resData.(responses.Message)
-		if !ok {
-			// no idea about the data. just return the data
-			return resData, httpStatusCode, nil
-		}
-		if resMessage.Code != reason.AccessTokenExpired {
-			// got error message but not access token expired. return the message
-			log.Printf("[DEBUG] upstream response logic error code: %d", resMessage.Code)
-			return resMessage, httpStatusCode, nil
-		}
-		log.Printf("[DEBUG] upstream response logic error: `AccessTokenExpired` (%d)", resMessage.Code)
-		// got "access token expired" message, request to update tokens
-		_, httpStatusCode, err = c.UpdateTokens(ctx)
-		if err != nil || httpStatusCode != http.StatusOK {
-			log.Printf("[DEBUG] [http %d] failed to update tokens %v", httpStatusCode, err)
-			return nil, httpStatusCode, err
-		}
-		// retry with new access token
-		log.Print("[DEBUG] retrying to fetch json")
-		resData, httpStatusCode, err = c.fetchJSON(ctx, method, endpoint)
+
+	shouldRetry := false
+	if resErr.Code != 0 {
+		shouldRetry = resErr.Code == reason.AccessTokenExpired
+	} else {
+		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
-	log.Print("[DEBUG] got json response")
-	return resData, httpStatusCode, err
+
+	if !shouldRetry {
+		return nil, nil, httpStatus, resErr
+	}
+
+	_, _, refreshErr := c.RefreshAPITokensForCookieSession(ctx)
+	if refreshErr != nil {
+		return nil, nil, httpStatus, refreshErr
+	}
+	return c.fetchJSON(ctx, method, endpoint)
 }
 
-func (c *ExternalAPIClient) fetchPDFBytes(ctx context.Context, method string, endpoint string) (
-	any, int, http.Header, error,
-) { // bytes or errMsg, http.StatusCode, http.Header, error
+func (c *ExternalAPIClient) fetchPDFBytes(ctx context.Context, method string, endpoint string) ([]byte, http.Header, int, *responses.Error) { // pdf bytes, response header, http status, error
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
-		return nil, http.StatusBadRequest, nil, errors.New("no session iD in the context")
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
-		return nil, http.StatusBadRequest, nil, fmt.Errorf("no access token for the api %q in the session", c.ApiID)
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+		}
 	}
 	upstrUrl := c.Conf.Host + endpoint
 	upstrReq, err := http.NewRequestWithContext(ctx, method, upstrUrl, nil)
 	if err != nil {
-		return nil, http.StatusBadRequest, nil, err
+		return nil, nil, http.StatusInternalServerError, &responses.Error{Message: err.Error(), Cause: err}
 	}
 
 	upstrReq.Header.Set("Client-Id", c.Conf.ClientID)
@@ -291,78 +290,69 @@ func (c *ExternalAPIClient) fetchPDFBytes(ctx context.Context, method string, en
 
 	upstrRes, err := c.Do(upstrReq)
 	if err != nil {
-		return nil, http.StatusServiceUnavailable, nil, err
+		return nil, nil, http.StatusServiceUnavailable, &responses.Error{Message: err.Error(), Cause: err}
 	}
 	defer func() { _ = upstrRes.Body.Close() }()
 
-	if upstrRes.StatusCode == http.StatusNotFound {
-		// 404 not found -> raw error message sent before wrapped into JSON
-		return nil, http.StatusNotFound, upstrRes.Header, responses.HTTPErrorNotFound
-	}
-
-	if upstrRes.StatusCode != http.StatusOK {
-		var resMsg responses.Message
-		err = json.UnmarshalRead(upstrRes.Body, &resMsg)
+	if upstrRes.StatusCode == http.StatusOK {
+		pdfData, err := io.ReadAll(upstrRes.Body)
 		if err != nil {
-			return nil, http.StatusInternalServerError, upstrRes.Header, errors.New("failed to unmarshal server message")
+			return nil, nil, http.StatusInternalServerError, &responses.Error{Message: err.Error(), Cause: err}
 		}
-		return resMsg, upstrRes.StatusCode, upstrRes.Header, nil
+		return pdfData, upstrRes.Header, http.StatusOK, nil
 	}
 
-	// Now we expect PDF response body
-	pdfData, err := io.ReadAll(upstrRes.Body)
-	if err != nil {
-		return nil, upstrRes.StatusCode, upstrRes.Header, err
+	// Error path — parse structured error from API
+	var apiErr responses.Error
+	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
+		return nil, nil, upstrRes.StatusCode, &responses.Error{
+			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+		}
 	}
-
-	return pdfData, upstrRes.StatusCode, upstrRes.Header, nil
+	return nil, nil, upstrRes.StatusCode, &apiErr
 }
 
-func (c *ExternalAPIClient) FetchPDFBytesRetriable(ctx context.Context, method string, endpoint string) (
-	any, int, http.Header, error,
-) { // bytes or errMsg, http.StatusCode, http.Header, error
-	pdfData, httpStatusCode, resHeader, err := c.fetchPDFBytes(ctx, method, endpoint)
-	if err != nil {
-		// internal error
-		return pdfData, httpStatusCode, resHeader, err
+func (c *ExternalAPIClient) FetchPDFBytesRetriable(ctx context.Context, method string, endpoint string) ([]byte, http.Header, int, *responses.Error) { // pdf bytes, response header, http status, error
+	pdfData, resHeader, httpStatus, resErr := c.fetchPDFBytes(ctx, method, endpoint)
+	if resErr == nil {
+		return pdfData, resHeader, httpStatus, nil
 	}
-	if httpStatusCode == http.StatusUnauthorized {
-		// pdfData is expected to responses.Message
-		resMessage, ok := pdfData.(responses.Message)
-		if !ok {
-			// no idea about the data. just return the data
-			return pdfData, httpStatusCode, resHeader, nil
-		}
-		if resMessage.Code != reason.AccessTokenExpired {
-			// got error message but not access token expired. return the message
-			return resMessage, httpStatusCode, resHeader, nil
-		}
-		// got "access token expired" message, request to update tokens
-		_, httpStatusCode, err = c.UpdateTokens(ctx)
-		if err != nil || httpStatusCode != http.StatusOK {
-			return nil, httpStatusCode, resHeader, err
-		}
-		// retry with new access token
-		pdfData, httpStatusCode, resHeader, err = c.fetchPDFBytes(ctx, method, endpoint)
+
+	shouldRetry := false
+	if resErr.Code != 0 {
+		shouldRetry = resErr.Code == reason.AccessTokenExpired
+	} else {
+		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
-	return pdfData, httpStatusCode, resHeader, err
+
+	if !shouldRetry {
+		return nil, nil, httpStatus, resErr
+	}
+
+	_, _, refreshErr := c.RefreshAPITokensForCookieSession(ctx)
+	if refreshErr != nil {
+		return nil, nil, httpStatus, refreshErr
+	}
+	return c.fetchPDFBytes(ctx, method, endpoint)
 }
 
-func (c *ExternalAPIClient) fetchPDFStream(ctx context.Context, method string, endpoint string) (
-	io.ReadCloser, *responses.Message, int, http.Header, error,
-) { // stream, json msg, http.StatusCode, http.Header, error
+func (c *ExternalAPIClient) fetchPDFStream(ctx context.Context, method string, endpoint string) (io.ReadCloser, http.Header, int, *responses.Error) { // stream, response header, http status, error
 	sessionID, ok := usercookiesession.SessionIDFromContext(ctx)
 	if !ok {
-		return nil, nil, http.StatusBadRequest, nil, errors.New("no session iD in the context")
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionExpired, Message: "no session id in the context",
+		}
 	}
 	accessToken, err := c.Core.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, nil, fmt.Errorf("no access token for the api %q in the session", c.ApiID)
+		return nil, nil, http.StatusUnauthorized, &responses.Error{
+			Code: reason.CookieSessionAPITokenNotFound, Message: fmt.Sprintf("no access token for the api %q in the session", c.ApiID), Cause: err,
+		}
 	}
 	upstrUrl := c.Conf.Host + endpoint
 	upstrReq, err := http.NewRequestWithContext(ctx, method, upstrUrl, nil)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, nil, err
+		return nil, nil, http.StatusInternalServerError, &responses.Error{Message: err.Error(), Cause: err}
 	}
 
 	upstrReq.Header.Set("Client-Id", c.Conf.ClientID)
@@ -372,65 +362,45 @@ func (c *ExternalAPIClient) fetchPDFStream(ctx context.Context, method string, e
 
 	upstrRes, err := c.Do(upstrReq)
 	if err != nil {
-		return nil, nil, http.StatusServiceUnavailable, nil, err
+		return nil, nil, http.StatusServiceUnavailable, &responses.Error{Message: err.Error(), Cause: err}
 	}
 
 	if upstrRes.StatusCode == http.StatusOK {
-		// SUCCESS: stream PDF
-		return upstrRes.Body, nil, upstrRes.StatusCode, upstrRes.Header, nil
+		return upstrRes.Body, upstrRes.Header, http.StatusOK, nil
 	}
 
-	// ERROR PATH — must consume & close body
+	// Error path — must consume & close body
 	defer func() { _ = upstrRes.Body.Close() }()
 
-	if upstrRes.StatusCode == http.StatusNotFound {
-		// 404 not found -> raw error message sent before wrapped into JSON
-		return nil, nil, http.StatusNotFound, upstrRes.Header, responses.HTTPErrorNotFound
+	var apiErr responses.Error
+	if err = json.UnmarshalRead(upstrRes.Body, &apiErr); err != nil {
+		return nil, nil, upstrRes.StatusCode, &responses.Error{
+			Code: reason.JSONUnmarshalFailed, Message: "failed to unmarshal server error", Cause: err,
+		}
 	}
-
-	var resMsg responses.Message
-	if err := json.UnmarshalRead(upstrRes.Body, &resMsg); err != nil {
-		return nil, nil, http.StatusInternalServerError, upstrRes.Header, err
-	}
-	return nil, &resMsg, upstrRes.StatusCode, upstrRes.Header, nil
+	return nil, nil, upstrRes.StatusCode, &apiErr
 }
 
-// FetchPDFStreamRetriable is a wrapper to retry when the access token is expired
-// 1. Try fetchPDFStream
-// 2. If success, return the stream immediately
-// 3. If JSON error is returned, inspect it
-// 4. If error code is AccessTokenExpired, refresh token and retry once
-func (c *ExternalAPIClient) FetchPDFStreamRetriable(ctx context.Context, method string, endpoint string) (
-	io.ReadCloser, *responses.Message, int, http.Header, error,
-) { // stream, json msg, http.StatusCode, http.Header, error
-	// ---- first attempt ----
-	stream, resMsg, status, hdr, err := c.fetchPDFStream(ctx, method, endpoint)
-	if err != nil {
-		// transport / internal error
-		return nil, nil, status, hdr, err
+func (c *ExternalAPIClient) FetchPDFStreamRetriable(ctx context.Context, method string, endpoint string) (io.ReadCloser, http.Header, int, *responses.Error) { // stream, response header, http status, error
+	stream, resHeader, httpStatus, resErr := c.fetchPDFStream(ctx, method, endpoint)
+	if resErr == nil {
+		return stream, resHeader, httpStatus, nil
 	}
-	if stream != nil {
-		// success: stream PDF
-		return stream, nil, status, hdr, nil
+
+	shouldRetry := false
+	if resErr.Code != 0 {
+		shouldRetry = resErr.Code == reason.AccessTokenExpired
+	} else {
+		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
-	if resMsg == nil {
-		// non-JSON error (e.g. 404 already handled upstream)
-		return nil, nil, status, hdr, nil
+
+	if !shouldRetry {
+		return nil, nil, httpStatus, resErr
 	}
-	// ---- inspect JSON error ----
-	if status != http.StatusUnauthorized || resMsg.Code != reason.AccessTokenExpired {
-		// not a retryable auth error
-		return nil, resMsg, status, hdr, nil
+
+	_, _, refreshErr := c.RefreshAPITokensForCookieSession(ctx)
+	if refreshErr != nil {
+		return nil, nil, httpStatus, refreshErr
 	}
-	// ---- refresh access token ----
-	_, status, err = c.UpdateTokens(ctx)
-	if err != nil || status != http.StatusOK {
-		return nil, nil, status, hdr, err
-	}
-	// ---- retry once with fresh token ----
-	stream, resMsg, status, hdr, err = c.fetchPDFStream(ctx, method, endpoint)
-	if err != nil {
-		return nil, nil, status, hdr, err
-	}
-	return stream, resMsg, status, hdr, nil
+	return c.fetchPDFStream(ctx, method, endpoint)
 }
