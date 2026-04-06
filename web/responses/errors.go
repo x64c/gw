@@ -21,4 +21,7 @@ var (
 
 	ErrResourceNotFound     = &Error{Code: ResourceNotFound, Message: "resource not found"}
 	ErrResourceAccessDenied = &Error{Code: ResourceAccessDenied, Message: "resource access denied"}
+
+	ErrSQL                = &Error{Code: SQLError, Message: "sql error"}
+	ErrSQLNotFoundInStore = &Error{Code: SQLNotFoundInStore, Message: "sql statement not found in store"}
 )

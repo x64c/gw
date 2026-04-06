@@ -39,5 +39,6 @@ const (
 
 	// SQL
 
-	SQLNotFoundInStore = 1700 // SQL statement not found in RawSQLStore
+	SQLError           = 1700 // general SQL/database error
+	SQLNotFoundInStore = 1710 // SQL statement not found in RawSQLStore
 )
