@@ -6,6 +6,7 @@ import (
 
 	"github.com/x64c/gw/authuser"
 	"github.com/x64c/gw/contxt"
+	"github.com/x64c/gw/errs"
 	"github.com/x64c/gw/framework"
 	"github.com/x64c/gw/security"
 	"github.com/x64c/gw/web/responses"
@@ -39,7 +40,7 @@ func (m *AuthAPIAccessToken) Wrap(inner http.Handler) http.Handler {
 			responses.WriteSimpleErrorJSON(w, http.StatusInternalServerError, fmt.Sprintf("failed to fetch access token info. %v", err))
 			return
 		} else if !ok {
-			responses.WriteErrorJSON(w, http.StatusUnauthorized, responses.ErrAccessTokenExpired)
+			responses.WriteErrorJSON(w, http.StatusUnauthorized, errs.AccessTokenExpired)
 			return
 		}
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/x64c/gw/errs"
 )
 
 // WriteJSONBytes Write Already Encoded JSON Bytes into the Response
@@ -27,10 +29,10 @@ func EncodeWriteJSON(w http.ResponseWriter, httpStatusCode int, payload any) {
 }
 
 func WriteSimpleErrorJSON(w http.ResponseWriter, httpStatusCode int, msg string) {
-	EncodeWriteJSON(w, httpStatusCode, Error{Message: msg})
+	EncodeWriteJSON(w, httpStatusCode, errs.Error{Message: msg})
 }
 
-func WriteErrorJSON(w http.ResponseWriter, httpStatusCode int, resErr *Error) {
+func WriteErrorJSON(w http.ResponseWriter, httpStatusCode int, resErr *errs.Error) {
 	EncodeWriteJSON(w, httpStatusCode, resErr)
 }
 

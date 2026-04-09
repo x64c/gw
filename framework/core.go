@@ -45,7 +45,7 @@ type Core struct {
 	ClientApps               atomic.Pointer[map[string]clients.ClientAppConf] `json:"-"`          // [Hot Reload] PrepareClientApps
 	UserCookieSessionManager *usercookiesession.Manager                       `json:"-"`          // PrepareUserCookieSessions
 	HTMLTemplateStore        map[string]map[string]*template.Template         `json:"-"`          // PrepareHTMLTemplateStore
-	ExternalFWAPIClients     map[string]*ExternalAPIClient                    `json:"-"`          // PrepareExternalFWAPIClients
+	ExternalFWAPIClients     map[string]*web.ExternalFWAPIClient                `json:"-"`          // PrepareExternalFWAPIClients
 	TypedGroupRegistry       map[string]tg.RegGrp                             `json:"-"`          // Group Registry for typed groups
 	KVDBClients              map[string]kvdbs.Client                          `json:"-"`          // PrepareKVDBClients
 	MainKVDB                 kvdbs.DB                                         `json:"-"`          // From KVDBClients or set directly

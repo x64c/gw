@@ -18,7 +18,7 @@ func (c *Core) PrepareExternalFWAPIClients(apiIDs ...string) error {
 		return errors.New("no apiID provided")
 	}
 
-	c.ExternalFWAPIClients = make(map[string]*ExternalAPIClient, len(apiIDs))
+	c.ExternalFWAPIClients = make(map[string]*web.ExternalFWAPIClient, len(apiIDs))
 
 	for _, apiID := range apiIDs {
 		confFilePath := filepath.Join(c.AppRoot, "config", fmt.Sprintf(".external-fwapi-%s.json", apiID))
@@ -26,10 +26,10 @@ func (c *Core) PrepareExternalFWAPIClients(apiIDs ...string) error {
 		if err != nil {
 			return err
 		}
-		fwApiClient := ExternalAPIClient{
-			Client: web.ShallowCloneClient(c.BaseHttpClient),
-			ApiID:  apiID,
-			Core:   c,
+		fwApiClient := web.ExternalFWAPIClient{
+			Client:                   web.ShallowCloneClient(c.BaseHttpClient),
+			ApiID:                    apiID,
+			UserCookieSessionManager: c.UserCookieSessionManager,
 		}
 		if err = json.Unmarshal(confBytes, &fwApiClient.Conf); err != nil {
 			return err

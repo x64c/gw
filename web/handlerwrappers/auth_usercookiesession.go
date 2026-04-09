@@ -72,7 +72,7 @@ func (m *AuthUserCookieSession) authenticateCookieSession(
 		// Redirect to Login page Clearing Session Cookie
 		cookieSessionMgr.RemoveSessionCookie(w)
 		usercookiesession.SetIntendedURICookie(w, r, 60)
-		http.Redirect(w, r, cookieSessionMgr.Conf.LoginPath+"?session=expired", http.StatusSeeOther)
+		http.Redirect(w, r, cookieSessionMgr.Conf.LoginPath+"?session=expired", http.StatusSeeOther) // ToDo: abstract this.
 		return nil, nil, "", "", false
 	}
 

@@ -1,7 +1,7 @@
-package framework
+package web
 
-// ExternalAPIConf for a client of an External API built on this framework (Framework API)
-type ExternalAPIConf struct {
+// ExternalFWAPIConf for a client of an External API built on this framework (Framework API)
+type ExternalFWAPIConf struct {
 	Host                       string            `json:"host"`
 	ClientID                   string            `json:"client_id"`                 // ID of this App as a ExternalAPIClient of the MainBackendAPI
 	ReissueAccessTokenEndpoint string            `json:"reissue_access_token"`      // path after host
