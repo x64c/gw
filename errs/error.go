@@ -3,9 +3,10 @@ package errs
 import "errors"
 
 type Error struct {
+	Name    string `json:"name"`
 	Message string `json:"message"`
-	Code    int    `json:"code"` // logic error code. See: codes.go
-	Cause   error  `json:"-"`    // original error, not serialized
+	Code    int    `json:"code"` // logic error code
+	Cause   error  `json:"-"`   // original error, not serialized
 }
 
 func (e *Error) Error() string {
@@ -32,21 +33,21 @@ func (e *Error) IsSameCode(target *Error) bool {
 
 // WithDetail returns a new Error with the detail appended to the message.
 func (e *Error) WithDetail(detail string) *Error {
-	return &Error{Code: e.Code, Message: e.Message + ": " + detail, Cause: e.Cause}
+	return &Error{Name: e.Name, Code: e.Code, Message: e.Message + ": " + detail, Cause: e.Cause}
 }
 
 // WithCause returns a new Error preserving the existing Message but attaching
 // the given error as Cause. Useful when the message is built separately
 // (e.g. via WithDetail) but we still want errors.Is/As to walk to the original.
 func (e *Error) WithCause(err error) *Error {
-	return &Error{Code: e.Code, Message: e.Message, Cause: err}
+	return &Error{Name: e.Name, Code: e.Code, Message: e.Message, Cause: err}
 }
 
 // Wrap returns a new Error carrying the same Code, with the underlying error
 // preserved as Cause and its message appended to the base message.
 // Used at boundaries where a stdlib/external error enters the errs system.
 func (e *Error) Wrap(err error) *Error {
-	return &Error{Code: e.Code, Message: e.Message + ": " + err.Error(), Cause: err}
+	return &Error{Name: e.Name, Code: e.Code, Message: e.Message + ": " + err.Error(), Cause: err}
 }
 
 func (e *Error) Unwrap() error {
