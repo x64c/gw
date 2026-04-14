@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/x64c/gw/coll"
 	"github.com/x64c/gw/model"
 	"github.com/x64c/gw/nullable"
-	"github.com/x64c/gw/orm/coll"
 )
 
 // LoadBelongsTo - Load Parents on Children from SQL DB and Link Child-BelongsTo-Parent Relation

@@ -1,8 +1,8 @@
 package collgrp
 
 import (
+	"github.com/x64c/gw/coll"
 	"github.com/x64c/gw/model"
-	"github.com/x64c/gw/orm/coll"
 )
 
 // GroupBy creates an Unordered CollectionGroup from a Collection

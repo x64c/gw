@@ -3,7 +3,7 @@ package sqldbs
 import (
 	"fmt"
 
-	"github.com/x64c/gw/orm/coll"
+	"github.com/x64c/gw/coll"
 )
 
 func ScanRowToItem[

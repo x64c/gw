@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/x64c/gw/orm/coll"
+	"github.com/x64c/gw/coll"
 )
 
 // QueryFirst queries a single model using QueryOpts with LIMIT 1.

@@ -3,6 +3,7 @@ package coll
 import (
 	"encoding/json/v2"
 	"fmt"
+	"iter"
 	"sort"
 
 	"github.com/x64c/gw/model"
@@ -200,6 +201,28 @@ func (c *Collection[MP, ID]) ForEachOrderly(fn func(MP)) error {
 		}
 	}
 	return nil
+}
+
+// Iter returns an iterator over the collection's items.
+// If ordered, respects order. Supports break/continue naturally.
+func (c *Collection[MP, ID]) Iter() iter.Seq[MP] {
+	return func(yield func(MP) bool) {
+		if c.order != nil {
+			for _, id := range c.order {
+				if mp, ok := c.itemsMap[id]; ok {
+					if !yield(mp) {
+						return
+					}
+				}
+			}
+		} else {
+			for _, mp := range c.itemsMap {
+				if !yield(mp) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func (c *Collection[MP, ID]) Filter(fn func(MP) bool) *Collection[MP, ID] {
