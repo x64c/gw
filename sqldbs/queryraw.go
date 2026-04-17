@@ -16,7 +16,7 @@ func RawQueryItem[
 	rawSQLStmt string,
 	args ...any, // variadic
 ) (*M, error) { // Returns the Pointer to the Newly Created Item
-	row := db.QueryRow(ctx, rawSQLStmt, args...)
+	row := db.QueryRowRaw(ctx, rawSQLStmt, args...)
 	return ScanRowToItem[M, MP](row)
 }
 
@@ -29,7 +29,7 @@ func RawQueryItems[
 	rawSQLStmt string,
 	args ...any, // variadic
 ) ([]*M, error) { // Returns a Slice of Model-Pointers
-	rows, err := db.QueryRows(ctx, rawSQLStmt, args...)
+	rows, err := db.QueryRowsRaw(ctx, rawSQLStmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func RawQueryMap[
 	rawSQLStmt string,
 	args ...any, // variadic
 ) (map[ID]*M, error) { // Returns a ItemsMap of ID to Model-Pointers
-	rows, err := db.QueryRows(ctx, rawSQLStmt, args...)
+	rows, err := db.QueryRowsRaw(ctx, rawSQLStmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func RawQueryCollection[
 	rawSQLStmt string,
 	args ...any, // variadic
 ) (*coll.Collection[MP, ID], error) {
-	rows, err := db.QueryRows(ctx, rawSQLStmt, args...)
+	rows, err := db.QueryRowsRaw(ctx, rawSQLStmt, args...)
 	if err != nil {
 		return nil, err
 	}

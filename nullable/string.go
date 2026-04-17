@@ -12,6 +12,10 @@ type String struct {
 	sql.NullString
 }
 
+func StringFrom(v string) String {
+	return String{sql.NullString{String: v, Valid: true}}
+}
+
 func (n *String) MarshalJSON() ([]byte, error) {
 	if n.Valid {
 		return json.Marshal(n.String)

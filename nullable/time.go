@@ -13,6 +13,10 @@ type Time struct {
 	sql.NullTime
 }
 
+func TimeFrom(v time.Time) Time {
+	return Time{sql.NullTime{Time: v, Valid: true}}
+}
+
 func (n *Time) MarshalJSON() ([]byte, error) {
 	if n.Valid {
 		return json.Marshal(n.Time.Format(time.RFC3339))

@@ -2,30 +2,31 @@ package sqldbs
 
 import "context"
 
+// DB is the common database interface across supported databases.
+// Only methods shared by major SQL databases are included.
+// For driver-specific features, type-assert to the concrete DB type.
 type DB interface {
-	Exec(ctx context.Context, query string, args ...any) (Result, error)
-	QueryRows(ctx context.Context, query string, args ...any) (Rows, error)
-	QueryRow(ctx context.Context, query string, args ...any) Row
-	InsertStmt(ctx context.Context, query string, args ...any) (Result, error)
-	CopyFrom(ctx context.Context, table string, columns []string, rows [][]any) (int64, error)
-	Listen(ctx context.Context, channel string) (<-chan Notification, error)
+	Executor
+
+	// Prepare - Create a reusable prepared statement
 	Prepare(ctx context.Context, query string) (PreparedStmt, error)
-	BeginTx(ctx context.Context) (Tx, error)
+	// Ping - Check if the connection is alive
 	Ping(ctx context.Context) error
 
-	// Back-reference to the parent Client
+	// Transaction
 
-	Client() Client
+	// BeginTx - Start a transaction
+	BeginTx(ctx context.Context) (Tx, error)
 
-	// Convenience: delegates to Client
+	// Schema Inspection
 
-	FirstPlaceholder() string
-	NthPlaceholder(n int) string
-	InPlaceholders(start, cnt int) string
-	RawSQLStore(name string) *RawSQLStore
+	// PKColumnOf - Fetch the primary key column name and whether it auto-increments
+	PKColumnOf(ctx context.Context, table string) (column string, incrementing bool, err error)
 
-	// Per-DB primary store shortcut (set by app at boot)
+	// Raw SQL Store
 
-	MainRawSQLStore() *RawSQLStore
+	// SetMainRawSQLStore - Set primary RawSQLStore by name from Client's stores
 	SetMainRawSQLStore(name string)
+	// MainRawSQLStore - Primary RawSQLStore — set by SetMainRawSQLStore() beforehand
+	MainRawSQLStore() *RawSQLStore
 }

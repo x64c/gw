@@ -7,10 +7,10 @@ type WhereClause struct {
 	Cond Cond
 }
 
-// Build produces " WHERE <cond>" with DB-specific placeholder translation.
+// Build produces " WHERE <cond>" with dialect-specific placeholder translation.
 // startNth is the placeholder numbering offset (number of bind args
 // already in the base SQL + 1). Provided by the caller.
-func (w WhereClause) Build(db DB, startNth int) (string, []any) {
+func (w WhereClause) Build(dbClient Client, startNth int) (string, []any) {
 	if w.Cond == nil {
 		return "", nil
 	}
@@ -22,7 +22,7 @@ func (w WhereClause) Build(db DB, startNth int) (string, []any) {
 	nth := startNth
 	for i := 0; i < len(raw); i++ {
 		if raw[i] == '?' {
-			b.WriteString(db.NthPlaceholder(nth))
+			b.WriteString(dbClient.NthPlaceholder(nth))
 			nth++
 		} else {
 			b.WriteByte(raw[i])

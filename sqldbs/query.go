@@ -24,7 +24,7 @@ func QueryFirst[
 	if queryOpts.Limit > 1 {
 		return nil, errors.New("QueryFirst does not accept Limit greater than 1")
 	}
-	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
+	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db.Client(), 1)
 	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys) + LimitClause(1)
 	return RawQueryItem[M, MP](ctx, db, sqlStmt, args...)
 }
@@ -41,7 +41,7 @@ func QueryCollection[
 	sqlSelectBase string, // must be clean from WHERE and bindings
 	queryOpts QueryOpts,
 ) (*coll.Collection[MP, ID], error) {
-	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db, 1)
+	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db.Client(), 1)
 	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys) + LimitClause(queryOpts.Limit)
 	return RawQueryCollection[M, MP, ID](ctx, db, sqlStmt, args...)
 }
@@ -65,22 +65,23 @@ func QueryCollectionByColumn[
 	if len(values) == 0 {
 		return nil, errors.New("empty values")
 	}
+	dbClient := db.Client()
 	var (
 		rows Rows
 		err  error
 	)
 	if len(values) == 1 {
-		whereClause := fmt.Sprintf(" WHERE %s = %s", column.Name(), db.FirstPlaceholder())
+		whereClause := fmt.Sprintf(" WHERE %s = %s", column.Name(), dbClient.FirstPlaceholder())
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
-		rows, err = db.QueryRows(ctx, sqlStmt, values[0])
+		rows, err = db.QueryRowsRaw(ctx, sqlStmt, values[0])
 	} else {
-		whereClause := fmt.Sprintf(" WHERE %s IN (%s)", column.Name(), db.InPlaceholders(1, len(values)))
+		whereClause := fmt.Sprintf(" WHERE %s IN (%s)", column.Name(), dbClient.InPlaceholders(1, len(values)))
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 		valuesAsAny := make([]any, len(values))
 		for i, v := range values {
 			valuesAsAny[i] = v
 		}
-		rows, err = db.QueryRows(ctx, sqlStmt, valuesAsAny...)
+		rows, err = db.QueryRowsRaw(ctx, sqlStmt, valuesAsAny...)
 	}
 	if err != nil {
 		return nil, err

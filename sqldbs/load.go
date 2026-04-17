@@ -29,7 +29,7 @@ func LoadBelongsTo[
 	error,
 ) {
 	fKeysAsAny := coll.CollectUniqueToSlice(children, func(c CP) any { return foreignKey(c) })
-	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", db.InPlaceholders(1, len(fKeysAsAny)))
+	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", db.Client().InPlaceholders(1, len(fKeysAsAny)))
 	parents, err := RawQueryCollection[P, PP, PID](ctx, db, sqlStmt, fKeysAsAny...)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func LoadOptionalBelongsTo[
 	if len(fKeysAsAny) == 0 {
 		return coll.NewEmptyOrderedCollection[PP, PID](), nil
 	}
-	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", db.InPlaceholders(1, len(fKeysAsAny)))
+	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", db.Client().InPlaceholders(1, len(fKeysAsAny)))
 	parents, err := RawQueryCollection[P, PP, PID](ctx, db, sqlStmt, fKeysAsAny...)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func LoadHasMany[
 	relationFieldPtr func(PP) **coll.Collection[CP, CID], // on the parent
 	orderBys ...OrderBy,
 ) (*coll.Collection[CP, CID], error) {
-	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), db.InPlaceholders(1, parents.Len()))
+	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), db.Client().InPlaceholders(1, parents.Len()))
 	sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 	parentIDsAsAny := parents.IDsAsAny()
 	children, err := RawQueryCollection[C, CP, CID](ctx, db, sqlStmt, parentIDsAsAny...)
@@ -164,7 +164,7 @@ func LoadHasManyQueryOpts[
 	if queryOpts.WhereCond != nil {
 		cond = And{Conds: []Cond{cond, queryOpts.WhereCond}}
 	}
-	whereSQL, args := WhereClause{cond}.Build(db, 1)
+	whereSQL, args := WhereClause{cond}.Build(db.Client(), 1)
 	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys)
 	children, err := RawQueryCollection[C, CP, CID](ctx, db, sqlStmt, args...)
 	if err != nil {

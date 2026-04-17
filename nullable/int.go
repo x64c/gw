@@ -12,6 +12,10 @@ type Int struct {
 	sql.NullInt64
 }
 
+func IntFrom(v int64) Int {
+	return Int{sql.NullInt64{Int64: v, Valid: true}}
+}
+
 func (n *Int) MarshalJSON() ([]byte, error) {
 	if n.Valid {
 		return json.Marshal(n.Int64)
