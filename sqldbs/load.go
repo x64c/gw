@@ -41,10 +41,12 @@ func LoadBelongsTo[
 	return parents, nil
 }
 
-// LoadOptionalBelongsTo - Load Parents on Children from SQL DB and Link Child-BelongsTo-Parent Relation
-// Optional Version: children with null FKs are skipped (their relation field stays nil)
-// When accessing the parent model, nil check is required
-// Returns the Parent Collection
+// LoadOptionalBelongsTo - Load Parents on Children from SQL DB and Link Child-BelongsTo-Parent Relation.
+// Handles two cases:
+//   1. FK (pointer to parent) in child is nil → skipped
+//   2. Missing parent (child has FK but no matching parent in DB) → tolerant (allowed)
+// In both cases the child's relation field is left nil; nil check required when accessing.
+// Returns the Parent Collection.
 func LoadOptionalBelongsTo[
 	CP model.Identifiable[CID],
 	CID comparable,
@@ -85,8 +87,9 @@ func LoadOptionalBelongsTo[
 }
 
 // LoadNullableBelongsTo - Convenience wrapper around LoadOptionalBelongsTo for nullable FK fields
-// Uses nullable.Nullable[PID] interface to extract the FK pointer via Ptr()
-// Returns the Parent Collection
+// typed as nullable.Nullable[PID].
+// Extracts the FK pointer via Ptr() and delegates.
+// Returns the Parent Collection.
 func LoadNullableBelongsTo[
 	CP model.Identifiable[CID],
 	CID comparable,

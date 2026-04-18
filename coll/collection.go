@@ -171,6 +171,8 @@ func (c *Collection[MP, ID]) MarshalJSON() ([]byte, error) {
 
 // ForEach calls fn for every model in the collection.
 // If the collection has an order, it respects that order.
+// Has NO way to exit out of the whole iteration — always loops through all items.
+// For early exit, use Iter() with range-over-func + break.
 func (c *Collection[MP, ID]) ForEach(fn func(MP)) {
 	if c.order != nil {
 		for _, id := range c.order {
@@ -204,7 +206,10 @@ func (c *Collection[MP, ID]) ForEachOrderly(fn func(MP)) error {
 }
 
 // Iter returns an iterator over the collection's items.
-// If ordered, respects order. Supports break/continue naturally.
+// If ordered, respects order.
+// Supports break/continue naturally — break actually stops the producer,
+// not just the consumer loop. Use when early exit is needed.
+// For full iteration without early exit, ForEach is slightly cheaper (no yield bool check).
 func (c *Collection[MP, ID]) Iter() iter.Seq[MP] {
 	return func(yield func(MP) bool) {
 		if c.order != nil {

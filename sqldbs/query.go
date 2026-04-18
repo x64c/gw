@@ -73,7 +73,7 @@ func QueryCollectionByColumn[
 	if len(values) == 1 {
 		whereClause := fmt.Sprintf(" WHERE %s = %s", column.Name(), dbClient.FirstPlaceholder())
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
-		rows, err = db.QueryRowsRaw(ctx, sqlStmt, values[0])
+		rows, err = db.SelectRowsRaw(ctx, sqlStmt, values[0])
 	} else {
 		whereClause := fmt.Sprintf(" WHERE %s IN (%s)", column.Name(), dbClient.InPlaceholders(1, len(values)))
 		sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
@@ -81,7 +81,7 @@ func QueryCollectionByColumn[
 		for i, v := range values {
 			valuesAsAny[i] = v
 		}
-		rows, err = db.QueryRowsRaw(ctx, sqlStmt, valuesAsAny...)
+		rows, err = db.SelectRowsRaw(ctx, sqlStmt, valuesAsAny...)
 	}
 	if err != nil {
 		return nil, err

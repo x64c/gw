@@ -2,6 +2,7 @@ package sqldbs
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/x64c/gw/coll"
 )
@@ -16,6 +17,9 @@ func InsertModel[
 ](ctx context.Context, exec Executor, model MP) (Result, error) {
 	meta := model.TableMeta()
 	fieldMap := model.FieldsToWrite()
+	if meta.AutoIncrement && len(fieldMap) == 0 {
+		return nil, fmt.Errorf("InsertModel: %q has no writable fields", meta.Name)
+	}
 	columns := make([]string, 0, len(fieldMap)+1)
 	values := make([]any, 0, len(fieldMap)+1)
 	if !meta.AutoIncrement {
@@ -44,6 +48,9 @@ func InsertModelCollection[
 	first, _ := items.First()
 	meta := first.TableMeta()
 	firstMap := first.FieldsToWrite()
+	if meta.AutoIncrement && len(firstMap) == 0 {
+		return 0, fmt.Errorf("InsertModelCollection: %q has no writable fields", meta.Name)
+	}
 
 	columns := make([]string, 0, len(firstMap)+1)
 	if !meta.AutoIncrement {
@@ -83,9 +90,12 @@ func UpdateModel[
 ](ctx context.Context, exec Executor, model MP, updateColumns []string) (Result, error) {
 	meta := model.TableMeta()
 	fieldMap := model.FieldsToWrite()
+	if len(fieldMap) == 0 {
+		return nil, fmt.Errorf("UpdateModel: %q has no writable fields", meta.Name)
+	}
 	var columns []string
 	var values []any
-	if updateColumns == nil {
+	if len(updateColumns) == 0 {
 		columns = make([]string, 0, len(fieldMap))
 		values = make([]any, 0, len(fieldMap))
 		for col, val := range fieldMap {
@@ -119,8 +129,11 @@ func UpdateModelCollection[
 	// Get columns once from the first item
 	first, _ := items.First()
 	meta := first.TableMeta()
+	if len(first.FieldsToWrite()) == 0 {
+		return 0, fmt.Errorf("UpdateModelCollection: %q has no writable fields", meta.Name)
+	}
 	var columns []string
-	if updateColumns != nil {
+	if len(updateColumns) > 0 {
 		columns = updateColumns
 	} else {
 		firstMap := first.FieldsToWrite()
