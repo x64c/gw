@@ -29,6 +29,9 @@ func LoadBelongsTo[
 	error,
 ) {
 	fKeysAsAny := coll.CollectUniqueToSlice(children, func(c CP) any { return foreignKey(c) })
+	if len(fKeysAsAny) == 0 {
+		return coll.NewEmptyOrderedCollection[PP, PID](), nil
+	}
 	sqlStmt := sqlSelectBase + fmt.Sprintf(" WHERE id IN (%s)", db.Client().InPlaceholders(1, len(fKeysAsAny)))
 	parents, err := RawQueryCollection[P, PP, PID](ctx, db, sqlStmt, fKeysAsAny...)
 	if err != nil {
@@ -130,6 +133,9 @@ func LoadHasMany[
 	relationFieldPtr func(PP) **coll.Collection[CP, CID], // on the parent
 	orderBys ...OrderBy,
 ) (*coll.Collection[CP, CID], error) {
+	if parents.Len() == 0 {
+		return coll.NewEmptyOrderedCollection[CP, CID](), nil
+	}
 	whereClause := fmt.Sprintf(" WHERE %s IN (%s)", foreignKeyColumn.Name(), db.Client().InPlaceholders(1, parents.Len()))
 	sqlStmt := sqlSelectBase + whereClause + OrderByClause(orderBys)
 	parentIDsAsAny := parents.IDsAsAny()
@@ -163,6 +169,9 @@ func LoadHasManyQueryOpts[
 	relationFieldPtr func(PP) **coll.Collection[CP, CID], // on the parent
 	queryOpts QueryOpts,
 ) (*coll.Collection[CP, CID], error) {
+	if parents.Len() == 0 {
+		return coll.NewEmptyOrderedCollection[CP, CID](), nil
+	}
 	var cond Cond = InPred{Column: foreignKeyColumn, Values: parents.IDsAsAny()}
 	if queryOpts.WhereCond != nil {
 		cond = And{Conds: []Cond{cond, queryOpts.WhereCond}}
