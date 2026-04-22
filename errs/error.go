@@ -53,3 +53,14 @@ func (e *Error) Wrap(err error) *Error {
 func (e *Error) Unwrap() error {
 	return e.Cause
 }
+
+// AsStructured bridges a plain error to *Error.
+// If err already carries an *Error in its chain, returns that *Error as-is.
+// Otherwise returns fallback.Wrap(err) so the caller always has a structured error.
+// Useful at handler boundaries while framework funcs still return the plain error interface.
+func AsStructured(err error, fallback *Error) *Error {
+	if e, ok := errors.AsType[*Error](err); ok {
+		return e
+	}
+	return fallback.Wrap(err)
+}

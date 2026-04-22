@@ -7,12 +7,11 @@ type scanFieldsProvider interface {
 }
 
 type Scannable[T any] interface {
-	~*T                // Type Constraint: Underlying Type(~) = *T
-	scanFieldsProvider // must implement scanFieldsProvider
+	Tabular[T] // ~*T + tableMetaProvider
+	scanFieldsProvider
 }
 
 type ScannableIdentifiable[T any, ID comparable] interface {
-	~*T
-	scanFieldsProvider
+	Scannable[T]
 	model.Identifiable[ID]
 }

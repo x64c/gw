@@ -2,11 +2,11 @@ package sqldbs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
 	"github.com/x64c/gw/coll"
+	"github.com/x64c/gw/errs"
 )
 
 // QueryFirst queries a single model using QueryOpts with LIMIT 1.
@@ -22,7 +22,7 @@ func QueryFirst[
 	queryOpts QueryOpts,
 ) (*M, error) {
 	if queryOpts.Limit > 1 {
-		return nil, errors.New("QueryFirst does not accept Limit greater than 1")
+		return nil, errs.SQLDB.WithDetail("QueryFirst does not accept Limit greater than 1")
 	}
 	whereSQL, args := WhereClause{queryOpts.WhereCond}.Build(db.Client(), 1)
 	sqlStmt := sqlSelectBase + whereSQL + OrderByClause(queryOpts.OrderBys) + LimitClause(1)
@@ -63,7 +63,7 @@ func QueryCollectionByColumn[
 	orderBys ...OrderBy,
 ) (*coll.Collection[MP, ID], error) {
 	if len(values) == 0 {
-		return nil, errors.New("empty values")
+		return nil, errs.SQLDB.WithDetail("QueryCollectionByColumn requires at least one value")
 	}
 	dbClient := db.Client()
 	var (
