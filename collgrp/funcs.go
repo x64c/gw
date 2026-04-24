@@ -23,22 +23,30 @@ func GroupBy[
 	g := NewEmptyCollectionGroup[MP, ID, K]()
 
 	var subCollGen func() *coll.Collection[MP, ID]
+	var getOrCreateSubCollection func(K) *coll.Collection[MP, ID]
 	// respect the item-order of the source collection
 	if srcColl.IsOrdered() {
-		// source collection is ordered
+		// source collection is ordered — sub-collections are ordered, and groups preserve first-appearance order
 		subCollGen = coll.NewEmptyOrderedCollection
-	} else {
-		subCollGen = coll.NewEmptyUnorderedCollection
-	}
-
-	// get or create subgroup with ordered behavior
-	getOrCreateSubCollection := func(k K) *coll.Collection[MP, ID] {
-		if c, ok := g.FindCollection(k); ok {
+		getOrCreateSubCollection = func(k K) *coll.Collection[MP, ID] {
+			if c, ok := g.FindCollection(k); ok {
+				return c
+			}
+			c := subCollGen()
+			g.SetCollection(k, c)
+			g.order = append(g.order, k)
 			return c
 		}
-		c := subCollGen()
-		g.SetCollection(k, c)
-		return c
+	} else {
+		subCollGen = coll.NewEmptyUnorderedCollection
+		getOrCreateSubCollection = func(k K) *coll.Collection[MP, ID] {
+			if c, ok := g.FindCollection(k); ok {
+				return c
+			}
+			c := subCollGen()
+			g.SetCollection(k, c)
+			return c
+		}
 	}
 
 	// Respect the source's natural iteration order (ordered or unordered)
