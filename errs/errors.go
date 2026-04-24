@@ -32,7 +32,11 @@ var (
 	PermissionDenied     = &Error{Name: "PermissionDenied", Code: 1310, Message: "permission denied"}           // user lacks required permission
 	ResourceNotFound     = &Error{Name: "ResourceNotFound", Code: 1320, Message: "resource not found"}          // expected resource must exist but is missing
 	ResourceAccessDenied = &Error{Name: "ResourceAccessDenied", Code: 1321, Message: "resource access denied"}  // resource exists but user cannot access it
-	ResourceUnavailable  = &Error{Name: "ResourceUnavailable", Code: 1322, Message: "resource unavailable"}     // resource exists but is currently not available
+	ResourceUnavailable  = &Error{Name: "ResourceUnavailable", Code: 1322, Message: "resource unavailable"}     // resource exists but is not currently available (temporarily or permanently)
+
+	// PDF Rendering
+
+	PDFBuildFailed = &Error{Name: "PDFBuildFailed", Code: 1600, Message: "failed to build PDF"}
 
 	// DB
 
