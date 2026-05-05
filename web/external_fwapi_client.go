@@ -143,7 +143,7 @@ func (c *ExternalFWAPIClient) RefreshAPITokensForCookieSession(ctx context.Conte
 
 	refreshToken, err := cookieSessionMgr.FetchExternalRefreshToken(ctx, sessionID, c.ApiID)
 	if err != nil {
-		return nil, http.StatusUnauthorized, errs.CookieSessionAPITokenNotFound.WithDetail("no refresh token")
+		return nil, http.StatusUnauthorized, errs.UpstreamRefreshTokenNotFound.WithDetail("no refresh token")
 	}
 
 	upstrRes, err := c.RequestReissueAccessTokenWithRefreshTokenAndUserID(ctx, refreshToken, uidStr)
@@ -191,7 +191,7 @@ func (c *ExternalFWAPIClient) doRequest(ctx context.Context, method, endpoint st
 	}
 	accessToken, err := c.UserCookieSessionManager.FetchExternalAccessToken(ctx, sessionID, c.ApiID)
 	if err != nil {
-		return nil, http.StatusUnauthorized, errs.CookieSessionAPITokenNotFound.WithDetail(fmt.Sprintf("no access token for the api %q in the session", c.ApiID)).WithCause(err)
+		return nil, http.StatusUnauthorized, errs.UpstreamAccessTokenNotFound.WithDetail(fmt.Sprintf("no access token for the api %q in the session", c.ApiID)).WithCause(err)
 	}
 
 	// Build the Request Body fresh from the caller's BodyProvider (if any).
@@ -285,7 +285,7 @@ func (c *ExternalFWAPIClient) FetchJSONRetriable(ctx context.Context, method str
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.IsSameCode(errs.AccessTokenExpired)
+		shouldRetry = resErr.IsSameCode(errs.AccessTokenNotFound)
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
@@ -334,7 +334,7 @@ func (c *ExternalFWAPIClient) FetchPDFBytesRetriable(ctx context.Context, method
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.IsSameCode(errs.AccessTokenExpired)
+		shouldRetry = resErr.IsSameCode(errs.AccessTokenNotFound)
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}
@@ -378,7 +378,7 @@ func (c *ExternalFWAPIClient) FetchPDFStreamRetriable(ctx context.Context, metho
 
 	shouldRetry := false
 	if resErr.Code != 0 {
-		shouldRetry = resErr.IsSameCode(errs.AccessTokenExpired)
+		shouldRetry = resErr.IsSameCode(errs.AccessTokenNotFound)
 	} else {
 		shouldRetry = httpStatus == http.StatusUnauthorized
 	}

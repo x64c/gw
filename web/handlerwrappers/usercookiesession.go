@@ -7,24 +7,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/x64c/gw/authuser"
-	"github.com/x64c/gw/contxt"
+	"github.com/x64c/gw/errs"
 	"github.com/x64c/gw/framework"
 	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/web/responses"
 	"github.com/x64c/gw/web/usercookiesession"
 )
 
-type AuthUserCookieSession struct {
-	AppProvider    framework.AppProviderFunc
-	UIDCtxInjector contxt.UnaryInjectorFunc[string] // [optional] ctx with app-specific UID from uidStr
+type UserCookieSession[UID comparable] struct {
+	AppProvider framework.AppProviderFunc
+	ParseUID    func(string) (UID, error)
 }
 
-func (m *AuthUserCookieSession) Wrap(inner http.Handler) http.Handler {
-	if m.UIDCtxInjector == nil {
-		// [Default] if omitted, uidStr as UID as-is
-		m.UIDCtxInjector = authuser.StrUIDCtxInjector
-	}
+func (m *UserCookieSession[UID]) Wrap(inner http.Handler) http.Handler {
 	appCore := m.AppProvider().AppCore()
 	cookieSessionMgr := appCore.UserCookieSessionManager
 	switch cookieSessionMgr.Conf.ExpireMode {
@@ -38,7 +33,7 @@ func (m *AuthUserCookieSession) Wrap(inner http.Handler) http.Handler {
 	}
 }
 
-func (m *AuthUserCookieSession) authenticateCookieSession(
+func (m *UserCookieSession[UID]) authenticateCookieSession(
 	w http.ResponseWriter, r *http.Request, cookieSessionMgr *usercookiesession.Manager,
 ) (
 	ctx context.Context, sessionCookie *http.Cookie, sessionID string, uidStr string, ok bool, // ok to proceed
@@ -62,12 +57,13 @@ func (m *AuthUserCookieSession) authenticateCookieSession(
 	sessionID = string(sessionIDBytes)
 
 	key := cookieSessionMgr.SessionIDToKVDBKey(sessionID)
-	uidStr, found, err := cookieSessionMgr.KVDB.Get(ctx, key)
+	fields, err := cookieSessionMgr.KVDB.GetFields(ctx, key, "uid", "csrf")
 	if err != nil {
 		responses.WriteSimpleErrorJSON(w, http.StatusInternalServerError, fmt.Sprintf("failed to check session. %v", err))
 		return nil, nil, "", "", false
 	}
-	if !found {
+	uidStr, hasUID := fields["uid"]
+	if !hasUID {
 		// Session Not Found. Session might have been Expired.
 		// Redirect to Login page Clearing Session Cookie
 		cookieSessionMgr.RemoveSessionCookie(w)
@@ -75,19 +71,26 @@ func (m *AuthUserCookieSession) authenticateCookieSession(
 		http.Redirect(w, r, cookieSessionMgr.Conf.LoginPath+"?session=expired", http.StatusSeeOther) // ToDo: abstract this.
 		return nil, nil, "", "", false
 	}
+	csrfTkn := fields["csrf"]
 
-	// new context for the next handler
-	ctx = usercookiesession.ContextWithSessionID(ctx, sessionID)
-	ctx = usercookiesession.ContextWithUIDStr(ctx, uidStr)
-	ctx, err = m.UIDCtxInjector(ctx, uidStr)
+	uid, err := m.ParseUID(uidStr)
 	if err != nil {
-		responses.WriteSimpleErrorJSON(w, http.StatusInternalServerError, fmt.Sprintf("failed to inject data to the context. %v", err))
+		responses.WriteErrorJSON(w, http.StatusInternalServerError, errs.KVDB.WithDetail("parse uid").WithCause(err))
 		return
 	}
+
+	// new context for the next handler
+	ctx = usercookiesession.ContextWithSessionID(ctx, sessionID) // legacy
+	ctx = usercookiesession.WithSessionData(ctx, &usercookiesession.SessionData[UID]{
+		ID:      sessionID,
+		UIDStr:  uidStr,
+		UID:     uid,
+		CSRFTkn: csrfTkn,
+	})
 	return ctx, sessionCookie, sessionID, uidStr, true
 }
 
-func (m *AuthUserCookieSession) absoluteExpHandler(inner http.Handler, cookieSessionMgr *usercookiesession.Manager) http.Handler {
+func (m *UserCookieSession[UID]) absoluteExpHandler(inner http.Handler, cookieSessionMgr *usercookiesession.Manager) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, _, _, _, ok := m.authenticateCookieSession(w, r, cookieSessionMgr)
 		if !ok {
@@ -101,7 +104,7 @@ func (m *AuthUserCookieSession) absoluteExpHandler(inner http.Handler, cookieSes
 	})
 }
 
-func (m *AuthUserCookieSession) slidingExpHandler(inner http.Handler, cookieSessionMgr *usercookiesession.Manager) http.Handler {
+func (m *UserCookieSession[UID]) slidingExpHandler(inner http.Handler, cookieSessionMgr *usercookiesession.Manager) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx, sessionCookie, sessionID, uidStr, ok := m.authenticateCookieSession(w, r, cookieSessionMgr)
 		if !ok {

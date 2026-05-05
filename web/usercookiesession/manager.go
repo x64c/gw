@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/x64c/gw/errs"
 	"github.com/x64c/gw/kvdbs"
 	"github.com/x64c/gw/security"
 )
@@ -27,31 +28,33 @@ func (m *Manager) SessionExistsInKVDB(ctx context.Context, sessionID string) (bo
 	return m.KVDB.Exists(ctx, m.SessionIDToKVDBKey(sessionID))
 }
 
-func (m *Manager) VerifiySessionCookie(ctx context.Context, r *http.Request) bool {
+func (m *Manager) VerifySessionCookie(ctx context.Context, r *http.Request) *errs.Error {
 	sessionCookie, err := r.Cookie(CookieName)
 	if err != nil {
-		return false
+		return errs.CookieNotFound
 	}
 	cookieSessionId, err := m.Cipher.DecodeDecrypt(sessionCookie.Value) // []byte
 	if err != nil {
-		return false
+		return errs.InvalidCookie.WithCause(err)
 	}
 	found, err := m.SessionExistsInKVDB(ctx, string(cookieSessionId))
 	if err != nil {
-		return false
+		return errs.KVDB.WithDetail("verify session cookie").WithCause(err)
 	}
-	return found
+	if !found {
+		return errs.CookieSessionNotFound
+	}
+	return nil
 }
 
 func (m *Manager) StoreSessionInKVDB(ctx context.Context, uidStr string) (string, error) {
-	cookieSessionID, err := GenerateSessionID()
-	if err != nil {
-		return "", err
-	}
-	// Store session_id in KvDB with access_token and refresh_token
+	cookieSessionID := GenerateSessionID()
+	csrfTkn := security.GenerateOpaqueToken32()
+	// Store session_id in KvDB as a hash. uid + csrf in base hash; future fields slot in similarly.
 	slidingExpiration := time.Duration(m.Conf.ExpireIn) * time.Second
 	key := m.SessionIDToKVDBKey(cookieSessionID)
-	if err = m.KVDB.Set(ctx, key, uidStr, slidingExpiration); err != nil {
+	fields := map[string]any{"uid": uidStr, "csrf": csrfTkn}
+	if err := m.KVDB.SetFieldsWithTTL(ctx, key, fields, slidingExpiration); err != nil {
 		return "", err
 	}
 
@@ -64,7 +67,7 @@ func (m *Manager) StoreSessionInKVDB(ctx context.Context, uidStr string) (string
 		mutex.Lock() // waits until this gets the lock if it's locked by another goroutine
 		defer mutex.Unlock()
 
-		if err = m.KVDB.Push(ctx, usrSessionListKey, cookieSessionID); err != nil {
+		if err := m.KVDB.Push(ctx, usrSessionListKey, cookieSessionID); err != nil {
 			return "", err
 		}
 
@@ -76,7 +79,7 @@ func (m *Manager) StoreSessionInKVDB(ctx context.Context, uidStr string) (string
 			)
 		}()
 
-		if err = m.CleanUp(ctx, usrSessionListKey); err != nil {
+		if err := m.CleanUp(ctx, usrSessionListKey); err != nil {
 			return "", err
 		}
 	}

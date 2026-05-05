@@ -25,19 +25,10 @@ type AccessTokenPair struct {
 	RefreshToken string
 }
 
-func GenerateOpaqueAccessRefreshTokenPair(byteLength int) (string, string, error) {
-	var (
-		err          error
-		accessToken  string
-		refreshToken string
-	)
-	if accessToken, err = GenerateOpaqueToken(byteLength); err != nil {
-		return "", "", err
-	}
-	if refreshToken, err = GenerateOpaqueToken(byteLength); err != nil {
-		return "", "", err
-	}
-	return accessToken, refreshToken, nil
+// GenerateOpaqueAccessRefreshTokenPair returns two independently-random,
+// 256-bit, URL-safe base64-encoded opaque tokens.
+func GenerateOpaqueAccessRefreshTokenPair() (string, string) {
+	return GenerateOpaqueToken32(), GenerateOpaqueToken32()
 }
 
 type RefreshInfo struct {
@@ -108,16 +99,11 @@ func GetClaimsFromParsedJWTToken(parsedToken *jwt.Token) (jwt.MapClaims, error) 
 	return claimMap, nil
 }
 
-// GenerateOpaqueToken generates a Base64-encoded, URL-safe, opaque random string
-func GenerateOpaqueToken(byteLength int) (string, error) {
-	if byteLength <= 0 {
-		byteLength = 32 // default 32 bytes (256 bits)
-	}
-	bytes := make([]byte, byteLength)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("rand.Read: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(bytes), nil
+// GenerateOpaqueToken32 returns a 256-bit URL-safe base64-encoded random string.
+func GenerateOpaqueToken32() string {
+	bytes := make([]byte, 32)
+	_, _ = rand.Read(bytes)
+	return base64.RawURLEncoding.EncodeToString(bytes)
 }
 
 func HashHexSHA256(data string) string {

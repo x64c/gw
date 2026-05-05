@@ -9,14 +9,11 @@ import (
 	"net/url"
 )
 
-// GenerateSessionID generates 32 hex (0-9a-f) string from 16 random bytes for a Session ID
-func GenerateSessionID() (string, error) {
+// GenerateSessionID generates 32 hex (0-9a-f) string from 16 random bytes for a Session ID.
+func GenerateSessionID() string {
 	b := make([]byte, 16) // 128-bit random ID
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+	_, _ = rand.Read(b)   // crypto/rand.Read never errors (Go 1.24+)
+	return hex.EncodeToString(b)
 }
 
 func SetIntendedURICookie(w http.ResponseWriter, r *http.Request, maxAge int) {
@@ -67,7 +64,7 @@ func TryRedirectIfIntendedURICookie(w http.ResponseWriter, r *http.Request, logi
 
 func SessionIDToUIDStrFromKVDB(ctx context.Context, sessionMgr *Manager, sessionID string) (string, error) {
 	key := sessionMgr.SessionIDToKVDBKey(sessionID)
-	uidStr, ok, err := sessionMgr.KVDB.Get(ctx, key)
+	uidStr, ok, err := sessionMgr.KVDB.GetField(ctx, key, "uid")
 	if err != nil {
 		return "", err
 	}

@@ -1,43 +1,21 @@
 package handlerwrappers
 
 import (
-	"context"
 	"net/http"
 	"time"
 
+	"github.com/x64c/gw/errs"
 	"github.com/x64c/gw/framework"
 	"github.com/x64c/gw/web/responses"
 )
 
-type ThrottleUser struct {
-	AppProvider    framework.AppProviderFunc
-	UIDStrProvider func(context.Context) (string, error)
-	BucketGroupID  string
-}
-
-// Wrap the middleware func
-// prerequisite: UserID in the Request Context _ e.g. accesstoken.APIAccessTokenSession
-func (m *ThrottleUser) Wrap(inner http.Handler) http.Handler {
-	appCore := m.AppProvider().AppCore()
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		// UserID String
-		uidStr, err := m.UIDStrProvider(ctx)
-		if err != nil {
-			responses.WriteSimpleErrorJSON(w, http.StatusUnauthorized, err.Error())
-			return
-		}
-
-		// Check Throttle Bucket
-		if !appCore.ThrottleBucketStore.Allow(m.BucketGroupID, uidStr, time.Now()) {
-			responses.WriteSimpleErrorJSON(w, http.StatusTooManyRequests, "rate limited")
-			return
-		}
-
-		// Inner
-		inner.ServeHTTP(w, r)
-
-		// Post-action
-	})
+// throttleUser checks the user-keyed throttle bucket and writes a 429 if rate-limited.
+// Returns true if the request may proceed.
+// Used by ThrottleBearerUser and ThrottleCookieUser to share the bucket-check logic.
+func throttleUser(w http.ResponseWriter, appCore *framework.Core, uidStr, bucketGroupID string) bool {
+	if !appCore.ThrottleBucketStore.Allow(bucketGroupID, uidStr, time.Now()) {
+		responses.WriteErrorJSON(w, http.StatusTooManyRequests, errs.RateLimited)
+		return false
+	}
+	return true
 }

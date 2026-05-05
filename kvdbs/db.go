@@ -42,8 +42,12 @@ type DB interface {
 	//---- Hash Ops ----
 
 	SetField(ctx context.Context, key string, field string, value any) error
-	GetField(ctx context.Context, key string, field string) (string, bool, error) // val, found, err
+	// SetFieldWithTTL atomically sets a single field on a hash and assigns the key's TTL.
+	SetFieldWithTTL(ctx context.Context, key string, field string, value any, ttl time.Duration) error
 	SetFields(ctx context.Context, key string, fields map[string]any) error
+	// SetFieldsWithTTL atomically sets multiple fields on a hash and assigns the key's TTL.
+	SetFieldsWithTTL(ctx context.Context, key string, fields map[string]any, ttl time.Duration) error
+	GetField(ctx context.Context, key string, field string) (string, bool, error) // val, found, err
 	// GetFields returns values of found fields. By comparing lengths, you can check if all fields are found
 	GetFields(ctx context.Context, key string, fields ...string) (map[string]string, error)
 	// RemoveFields removes the specified fields in a hash key. Returns the number of fields actually removed.
